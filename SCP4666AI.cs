@@ -2,6 +2,7 @@
 using GameNetcodeStuff;
 using HandyCollections.Heap;
 using HarmonyLib;
+using SCP4666.YulemanKnife;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -20,8 +21,15 @@ namespace SCP4666
 
 #pragma warning disable 0649
         public NetworkAnimator networkAnimator = null!;
-        public Transform HandTransform = null!;
-
+        public Transform RightHandTransform = null!;
+        public GameObject ChildObj = null!;
+        public GameObject KnifeObj = null!;
+        public YulemanKnifeBehavior KnifeScript = null!;
+        public GameObject ChildSackPrefab = null!;
+        public GameObject TeethObj = null!;
+        public AudioClip FootstepSFX = null!;
+        public AudioClip TeleportSFX = null!;
+        public AudioClip LaughSFX = null!;
 #pragma warning restore 0649
 
         float timeSinceDamagePlayer;
@@ -31,7 +39,8 @@ namespace SCP4666
         // Constants
 
         // Config Values
-
+        int minPresentCount;
+        int maxPresentCount;
 
         public enum State
         {
@@ -46,9 +55,6 @@ namespace SCP4666
 
             switch (state)
             {
-                case State.Spawning:
-
-                    break;
                 case State.Chasing:
 
                     break;
@@ -68,7 +74,7 @@ namespace SCP4666
             logger.LogDebug("SCP-4666 Spawned");
 
             RoundManager.Instance.SpawnedEnemies.Add(this);
-            //SetOutsideOrInside();
+            currentBehaviourStateIndex = (int)State.Spawning;
 
             timeSinceSeenPlayer = Mathf.Infinity;
 
@@ -139,71 +145,6 @@ namespace SCP4666
             }
         }
 
-        bool FoundClosestPlayerInRange(float range, float senseRange)
-        {
-            TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: true);
-            if (targetPlayer == null)
-            {
-                // Couldn't see a player, so we check if a player is in sensing distance instead
-                TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: false);
-                range = senseRange;
-            }
-            return targetPlayer != null && Vector3.Distance(transform.position, targetPlayer.transform.position) < range;
-        }
-
-        bool TargetClosestPlayerInAnyCase()
-        {
-            mostOptimalDistance = 2000f;
-            targetPlayer = null;
-            foreach (var player in StartOfRound.Instance.allPlayerScripts)
-            {
-                if (!PlayerIsTargetable(player)) { continue; }
-                tempDist = Vector3.Distance(transform.position, player.transform.position);
-                if (tempDist < mostOptimalDistance)
-                {
-                    mostOptimalDistance = tempDist;
-                    targetPlayer = player;
-                }
-            }
-
-            return targetPlayer != null;
-        }
-
-        public void SetOutsideOrInside()
-        {
-            GameObject closestOutsideNode = GetClosestAINode(GameObject.FindGameObjectsWithTag("OutsideAINode").ToList());
-            GameObject closestInsideNode = GetClosestAINode(GameObject.FindGameObjectsWithTag("AINode").ToList());
-
-            if (Vector3.Distance(transform.position, closestOutsideNode.transform.position) < Vector3.Distance(transform.position, closestInsideNode.transform.position))
-            {
-                logger.LogDebug("Setting enemy outside");
-                SetEnemyOutsideClientRpc(true);
-                return;
-            }
-            logger.LogDebug("Setting enemy inside");
-        }
-
-        public GameObject GetClosestAINode(List<GameObject> nodes)
-        {
-            float closestDistance = Mathf.Infinity;
-            GameObject closestNode = null!;
-            foreach (GameObject node in nodes)
-            {
-                float distanceToNode = Vector3.Distance(transform.position, node.transform.position);
-                if (distanceToNode < closestDistance)
-                {
-                    closestDistance = distanceToNode;
-                    closestNode = node;
-                }
-            }
-            return closestNode;
-        }
-
-        public override void KillEnemy(bool destroy = false)
-        {
-
-        }
-
         public override void HitEnemy(int force = 0, PlayerControllerB playerWhoHit = null!, bool playHitSFX = true, int hitID = -1)
         {
             if (!isEnemyDead && !inSpecialAnimation)
@@ -247,6 +188,83 @@ namespace SCP4666
 
                 }
             }
+        }
+
+        bool FoundClosestPlayerInRange(float range, float senseRange)
+        {
+            TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: true);
+            if (targetPlayer == null)
+            {
+                // Couldn't see a player, so we check if a player is in sensing distance instead
+                TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: false);
+                range = senseRange;
+            }
+            return targetPlayer != null && Vector3.Distance(transform.position, targetPlayer.transform.position) < range;
+        }
+
+        bool TargetClosestPlayerInAnyCase()
+        {
+            mostOptimalDistance = 2000f;
+            targetPlayer = null;
+            foreach (var player in StartOfRound.Instance.allPlayerScripts)
+            {
+                if (!PlayerIsTargetable(player)) { continue; }
+                tempDist = Vector3.Distance(transform.position, player.transform.position);
+                if (tempDist < mostOptimalDistance)
+                {
+                    mostOptimalDistance = tempDist;
+                    targetPlayer = player;
+                }
+            }
+
+            return targetPlayer != null;
+        }
+
+        // Animation Functions
+
+        public void MakeKnifeVisible()
+        {
+
+        }
+
+        public void MakeKnifeInvisible()
+        {
+
+        }
+
+        public void PlayRoarSFX()
+        {
+
+        }
+
+        public void ThrowKnife()
+        {
+            
+        }
+
+        public void CallKnifeBack()
+        {
+
+        }
+
+        public void PlayFootstepSFX()
+        {
+
+        }
+
+        public void DestroyChildObject()
+        {
+
+        }
+
+        public void GrabPlayer()
+        {
+
+        }
+
+        public void PutPlayerInSack()
+        {
+            
         }
 
         // RPC's
