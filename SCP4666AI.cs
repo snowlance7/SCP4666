@@ -32,9 +32,10 @@ namespace SCP4666
         public AudioClip LaughSFX = null!;
 #pragma warning restore 0649
 
+        List<PlayerControllerB> TargetPlayers = [];
+        bool localPlayerHasSeenYuleman = false;
+
         float timeSinceDamagePlayer;
-        float timeSinceSeenPlayer;
-        float timeSpawned;
 
         // Constants
 
@@ -73,10 +74,7 @@ namespace SCP4666
             base.Start();
             logger.LogDebug("SCP-4666 Spawned");
 
-            RoundManager.Instance.SpawnedEnemies.Add(this);
             currentBehaviourStateIndex = (int)State.Spawning;
-
-            timeSinceSeenPlayer = Mathf.Infinity;
 
             if (IsServerOrHost) { StartCoroutine(DelayedStart()); }
         }
@@ -107,12 +105,16 @@ namespace SCP4666
             };
 
             timeSinceDamagePlayer += Time.deltaTime;
-            timeSinceSeenPlayer += Time.deltaTime;
-            timeSpawned += Time.deltaTime;
 
-            if (localPlayer.HasLineOfSightToPosition(transform.position, 50f))
+            if (localPlayer.HasLineOfSightToPosition(transform.position))
             {
                 localPlayer.IncreaseFearLevelOverTime(0.1f, 0.5f);
+
+                if (!localPlayerHasSeenYuleman)
+                {
+                    localPlayerHasSeenYuleman = true;
+                    AddTargetPlayerServerRpc(localPlayer.actualClientId);
+                }
             }
         }
 
@@ -133,6 +135,17 @@ namespace SCP4666
 
                 case (int)State.Chasing:
 
+                    if (TargetPlayers.Count == 0)
+                    {
+                        SwitchToBehaviourStateCustom(State.Abducting);
+                        return;
+                    }
+
+                    if (!TargetClosestPlayer())
+                    {
+                        
+                    }
+
                     break;
 
                 case (int)State.Abducting:
@@ -143,6 +156,33 @@ namespace SCP4666
                     logger.LogWarning("Invalid state: " + currentBehaviourStateIndex);
                     break;
             }
+        }
+
+        public void Teleport(Vector3 position, bool _isOutside)
+        {
+
+        }
+
+        public bool TargetClosestPlayer()
+        {
+            float closestDistance = 4000f;
+
+            foreach (var player in TargetPlayers)
+            {
+                if (player.isPlayerDead)
+                {
+                    TargetPlayers.Remove(player);
+                    continue;
+                }
+                float distance = Vector3.Distance(player.transform.position, transform.position);
+                if (distance < closestDistance)
+                {
+                    targetPlayer = player;
+                    closestDistance = distance;
+                }
+            }
+
+            return targetPlayer != null;
         }
 
         public override void HitEnemy(int force = 0, PlayerControllerB playerWhoHit = null!, bool playHitSFX = true, int hitID = -1)
@@ -163,15 +203,15 @@ namespace SCP4666
             base.HitFromExplosion(distance);
             if (distance < 2)
             {
-                HitEnemy(20);
+                HitEnemy(10);
             }
             else if (distance < 3)
             {
-                HitEnemy(15);
+                HitEnemy(8);
             }
             else if (distance < 5)
             {
-                HitEnemy(19);
+                HitEnemy(7);
             }
         }
 
@@ -188,36 +228,6 @@ namespace SCP4666
 
                 }
             }
-        }
-
-        bool FoundClosestPlayerInRange(float range, float senseRange)
-        {
-            TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: true);
-            if (targetPlayer == null)
-            {
-                // Couldn't see a player, so we check if a player is in sensing distance instead
-                TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: false);
-                range = senseRange;
-            }
-            return targetPlayer != null && Vector3.Distance(transform.position, targetPlayer.transform.position) < range;
-        }
-
-        bool TargetClosestPlayerInAnyCase()
-        {
-            mostOptimalDistance = 2000f;
-            targetPlayer = null;
-            foreach (var player in StartOfRound.Instance.allPlayerScripts)
-            {
-                if (!PlayerIsTargetable(player)) { continue; }
-                tempDist = Vector3.Distance(transform.position, player.transform.position);
-                if (tempDist < mostOptimalDistance)
-                {
-                    mostOptimalDistance = tempDist;
-                    targetPlayer = player;
-                }
-            }
-
-            return targetPlayer != null;
         }
 
         // Animation Functions
@@ -268,6 +278,18 @@ namespace SCP4666
         }
 
         // RPC's
+
+        [ServerRpc(RequireOwnership = false)]
+        public void AddTargetPlayerServerRpc(ulong clientId)
+        {
+            if (IsServerOrHost)
+            {
+                PlayerControllerB player = PlayerFromId(clientId);
+                if (TargetPlayers.Contains(player)) { return; }
+                TargetPlayers.Add(player);
+                logger.LogDebug($"Added {player.playerUsername} to targeted players");
+            }
+        }
 
         [ServerRpc(RequireOwnership = false)]
         public new void SwitchToBehaviourServerRpc(int stateIndex)

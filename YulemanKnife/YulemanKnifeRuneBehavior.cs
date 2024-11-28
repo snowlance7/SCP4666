@@ -13,6 +13,7 @@ using Unity.Netcode.Components;
 using UnityEngine;
 using UnityEngine.UIElements.UIR;
 using static SCP4666.Plugin;
+using Steamworks.Data;
 
 namespace SCP4666.YulemanKnife
 {
@@ -21,42 +22,61 @@ namespace SCP4666.YulemanKnife
         private static ManualLogSource logger = LoggerInstance;
 
         public YulemanKnifeBehavior KnifeScript = null!;
+        bool callingKnife;
+        bool despawning;
+        int itemSlot = -1;
 
-        public override void Update()
+        public override void GrabItem()
         {
-            base.Update();
+            base.GrabItem();
+            itemSlot = playerHeldBy.currentItemSlot;
         }
 
         public override void DiscardItem()
         {
-            KnifeScript.RuneScript = null;
-            DestroyObjectInHand(playerHeldBy);
+            if (despawning || callingKnife) { return; }
+            Despawn();
         }
 
         public override void PocketItem()
         {
-            KnifeScript.RuneScript = null;
-            DestroyObjectInHand(playerHeldBy);
+            if (despawning || callingKnife) { return; }
+            Despawn();
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true)
         {
             base.ItemActivate(used, buttonDown);
 
-            if (buttonDown)
-            {
+            if (KnifeScript == null) { Despawn(); return; }
 
+            if (buttonDown && !callingKnife && playerHeldBy != null && !playerHeldBy.activatingItem)
+            {
+                playerHeldBy.activatingItem = true;
+                callingKnife = true;
+                KnifeScript.ReturnToPlayer();
             }
         }
 
-        // RPCs
-
-        [ServerRpc(RequireOwnership = false)]
-        public void DespawnServerRpc()
+        public void Despawn()
         {
-            if (IsServerOrHost)
+            if (despawning) { return; }
+            despawning = true;
+            if (KnifeScript != null)
             {
-                NetworkObject.Despawn(true);
+                KnifeScript.RuneScript = null;
+            }
+            if (playerHeldBy != null && playerHeldBy == localPlayer)
+            {
+                try
+                {
+                    playerHeldBy.DespawnHeldObject();
+                }
+                catch
+                {
+                    NetworkObject.Despawn(true);
+                }
+                HUDManager.Instance.itemSlotIcons[itemSlot] = null;
             }
         }
     }

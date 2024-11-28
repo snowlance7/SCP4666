@@ -1,5 +1,6 @@
 using BepInEx.Logging;
 using HarmonyLib;
+using SCP4666.YulemanKnife;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
@@ -21,7 +22,7 @@ using static SCP4666.Plugin;
 
 namespace SCP4666
 {
-    //[HarmonyPatch]
+    [HarmonyPatch]
     internal class TESTING : MonoBehaviour
     {
         private static ManualLogSource logger = Plugin.LoggerInstance;
@@ -41,6 +42,9 @@ namespace SCP4666
 
             switch (args[0])
             {
+                case "/force":
+                    YulemanKnifeBehavior.throwForce = float.Parse(args[1]);
+                    break;
                 case "/enemies":
                     foreach (var enemy in GetEnemies())
                     {
