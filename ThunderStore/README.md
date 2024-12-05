@@ -4,9 +4,13 @@
 
 
 
+## About Project SCP:
+
+Project Scp is in constant development and need help to grown into one of the major figures of Lethal Company Development. Join our [discord](https://discord.gg/X8S4wsxggb) server to see updates and give your touch on our mission to make Lethal Company the second SCP foundation.
+
 ## Contact
 
-For issues and suggestions visit the [github](https://github.com/snowlance7/SCP4666), [PojectSCP Discord](https://discord.gg/X8S4wsxggb) page, or [Modding Discord]().
+For issues and suggestions visit the [github](https://github.com/snowlance7/SCP4666), [PojectSCP Discord]() page, or [Modding Discord]().
 
 ## For collaboration or queries
 

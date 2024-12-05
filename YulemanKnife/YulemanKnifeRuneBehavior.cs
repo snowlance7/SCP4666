@@ -22,61 +22,48 @@ namespace SCP4666.YulemanKnife
         private static ManualLogSource logger = LoggerInstance;
 
         public YulemanKnifeBehavior KnifeScript = null!;
-        bool callingKnife;
-        bool despawning;
-        int itemSlot = -1;
+        float timeSpawned;
 
-        public override void GrabItem()
+        public override void Update()
         {
-            base.GrabItem();
-            itemSlot = playerHeldBy.currentItemSlot;
+            base.Update();
+            timeSpawned += Time.deltaTime;
+            if (timeSpawned > 1 && playerHeldBy == null)
+            {
+                NetworkObject.Despawn(true);
+            }
         }
 
-        public override void DiscardItem()
+        public override void OnHitGround()
         {
-            if (despawning || callingKnife) { return; }
-            Despawn();
+            base.OnHitGround();
+            NetworkObject.Despawn(true);
         }
 
-        public override void PocketItem()
-        {
-            if (despawning || callingKnife) { return; }
-            Despawn();
-        }
-
-        public override void ItemActivate(bool used, bool buttonDown = true)
+        public override void ItemActivate(bool used, bool buttonDown = true) // Synced
         {
             base.ItemActivate(used, buttonDown);
 
-            if (KnifeScript == null) { Despawn(); return; }
-
-            if (buttonDown && !callingKnife && playerHeldBy != null && !playerHeldBy.activatingItem)
+            if (KnifeScript == null)
             {
-                playerHeldBy.activatingItem = true;
-                callingKnife = true;
+                logger.LogDebug("KnifeScript is null!");
+                playerHeldBy.DespawnHeldObject();
+                return;
+            }
+
+            if (buttonDown && playerHeldBy != null)
+            {
                 KnifeScript.ReturnToPlayer();
+                playerHeldBy.DespawnHeldObject();
             }
         }
 
-        public void Despawn()
+        public override void OnNetworkDespawn()
         {
-            if (despawning) { return; }
-            despawning = true;
+            base.OnNetworkDespawn();
             if (KnifeScript != null)
             {
                 KnifeScript.RuneScript = null;
-            }
-            if (playerHeldBy != null && playerHeldBy == localPlayer)
-            {
-                try
-                {
-                    playerHeldBy.DespawnHeldObject();
-                }
-                catch
-                {
-                    NetworkObject.Despawn(true);
-                }
-                HUDManager.Instance.itemSlotIcons[itemSlot] = null;
             }
         }
     }

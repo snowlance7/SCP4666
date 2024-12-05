@@ -107,7 +107,7 @@ namespace SCP4666
             Utilities.FixMixerGroups(Rune.spawnPrefab);
             LethalLib.Modules.Items.RegisterItem(Rune);
 
-            /*Item Sack = ModAssets.LoadAsset<Item>("Assets/ModAssets/ChildSackItem.asset");
+            Item Sack = ModAssets.LoadAsset<Item>("Assets/ModAssets/ChildSackItem.asset");
             if (Sack == null) { LoggerInstance.LogError("Error: Couldnt get ChildSackItem from assets"); return; }
             LoggerInstance.LogDebug($"Got ChildSack prefab");
 
@@ -116,9 +116,9 @@ namespace SCP4666
 
             LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Sack.spawnPrefab);
             Utilities.FixMixerGroups(Sack.spawnPrefab);
-            LethalLib.Modules.Items.RegisterScrap(Sack);*/
+            LethalLib.Modules.Items.RegisterScrap(Sack);
 
-            /*if (configEnableSCP4666.Value)
+            if (configEnableSCP4666.Value)
             {
                 EnemyType SCP4666 = ModAssets.LoadAsset<EnemyType>("Assets/ModAssets/SCP4666Enemy.asset");
                 if (SCP4666 == null) { LoggerInstance.LogError("Error: Couldnt get SCP-4666 from assets"); return; }
@@ -130,7 +130,7 @@ namespace SCP4666
                 LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(SCP4666.enemyPrefab);
                 LoggerInstance.LogDebug("Registering enemy...");
                 Enemies.RegisterEnemy(SCP4666, GetLevelRarities(config4666LevelRarities.Value), GetCustomLevelRarities(config4666CustomLevelRarities.Value), YulemanTN, YulemanTK);
-            }*/
+            }
 
             // Finished
             Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
@@ -205,6 +205,76 @@ namespace SCP4666
             {
                 Logger.LogError($"Error: {e}");
                 return null!;
+            }
+        }
+
+        /*public static void PerformInteractOnPlayer(PlayerControllerB player)
+        {
+            if (player.IsOwner && player.isPlayerDead && (!player.IsServer || player.isHostPlayerObject))
+            {
+                if (!StartOfRound.Instance.overrideSpectateCamera && player.spectatedPlayerScript != null && !player.spectatedPlayerScript.isPlayerDead)
+                {
+                    player.SpectateNextPlayer();
+                }
+            }
+            else
+            {
+                if (((!player.IsOwner || !player.isPlayerControlled || (player.IsServer && !player.isHostPlayerObject)) && !player.isTestingPlayer) || player.timeSinceSwitchingSlots < 0.2f || player.inSpecialMenu)
+                {
+                    return;
+                }
+                ShipBuildModeManager.Instance.CancelBuildMode();
+                if (!player.isGrabbingObjectAnimation && !player.isTypingChat && !player.inTerminalMenu && !player.throwingObject && !player.IsInspectingItem && !(player.inAnimationWithEnemy != null) && !player.jetpackControls && !player.disablingJetpackControls && !StartOfRound.Instance.suckingPlayersOutOfShip)
+                {
+                    if (!player.activatingItem && !player.waitingToDropItem)
+                    {
+                        player.BeginGrabObject();
+                    }
+                    if (!(player.hoveringOverTrigger == null) && !player.hoveringOverTrigger.holdInteraction && (!player.isHoldingObject || player.hoveringOverTrigger.oneHandedItemAllowed) && (!player.twoHanded || (player.hoveringOverTrigger.twoHandedItemAllowed && !player.hoveringOverTrigger.specialCharacterAnimation)) && player.InteractTriggerUseConditionsMet())
+                    {
+                        player.hoveringOverTrigger.Interact(player.thisPlayerBody);
+                    }
+                }
+            }
+        }*/
+
+        public static Vector3 GetPositionFrontOfPlayer(PlayerControllerB player, float distance = 1)
+        {
+            return player.playerEye.transform.position + player.playerEye.transform.forward * distance;
+        }
+
+        public static void GrabGrabbableObjectOnClient(GrabbableObject obj)
+        {
+            localPlayer.currentlyGrabbingObject = obj;
+            localPlayer.currentlyGrabbingObject.InteractItem();
+            if (localPlayer.currentlyGrabbingObject.grabbable && localPlayer.FirstEmptyItemSlot() != -1)
+            {
+                localPlayer.playerBodyAnimator.SetBool("GrabInvalidated", value: false);
+                localPlayer.playerBodyAnimator.SetBool("GrabValidated", value: false);
+                localPlayer.playerBodyAnimator.SetBool("cancelHolding", value: false);
+                localPlayer.playerBodyAnimator.ResetTrigger("Throw");
+                //localPlayer.SetSpecialGrabAnimationBool(setTrue: true);
+                //localPlayer.isGrabbingObjectAnimation = true;
+                localPlayer.cursorIcon.enabled = false;
+                localPlayer.cursorTip.text = "";
+                localPlayer.twoHanded = localPlayer.currentlyGrabbingObject.itemProperties.twoHanded;
+                localPlayer.carryWeight = Mathf.Clamp(localPlayer.carryWeight + (localPlayer.currentlyGrabbingObject.itemProperties.weight - 1f), 1f, 10f);
+                if (localPlayer.currentlyGrabbingObject.itemProperties.grabAnimationTime > 0f)
+                {
+                    localPlayer.grabObjectAnimationTime = localPlayer.currentlyGrabbingObject.itemProperties.grabAnimationTime;
+                }
+                /*else
+                {
+                    localPlayer.grabObjectAnimationTime = 0.4f;
+                }*/
+
+                localPlayer.GrabObjectServerRpc(obj.NetworkObject);
+
+                if (localPlayer.grabObjectCoroutine != null)
+                {
+                    localPlayer.StopCoroutine(localPlayer.grabObjectCoroutine);
+                }
+                localPlayer.grabObjectCoroutine = localPlayer.StartCoroutine(localPlayer.GrabObject());
             }
         }
 

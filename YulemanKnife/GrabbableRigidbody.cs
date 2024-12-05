@@ -44,7 +44,7 @@ public class GrabbableRigidbody : GrabbableObject
         isHeld = wasHeld;
     }
 
-    public void FixedUpdate()
+    /*public void FixedUpdate()
     {
         if (base.IsHost)
         {
@@ -58,7 +58,7 @@ public class GrabbableRigidbody : GrabbableObject
                 rb.AddForce(Vector3.zero, ForceMode.VelocityChange);
             }
         }
-    }
+    }*/
 
     public override void LateUpdate()
     {
@@ -80,17 +80,6 @@ public class GrabbableRigidbody : GrabbableObject
     public override void EquipItem()
     {
         base.EquipItem();
-        base.transform.SetParent(null, worldPositionStays: true);
+        //base.transform.SetParent(null, worldPositionStays: true);
     }
-
-    /*protected override void __initializeVariables()
-    {
-        base.__initializeVariables();
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    protected internal override string __getTypeName()
-    {
-        return "GrabbableRigidbody";
-    }*/
 }

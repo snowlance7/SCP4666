@@ -14,28 +14,26 @@ using static Unity.Collections.Unicode;
 
 namespace SCP4666.YulemanKnife
 {
-    internal class YulemanKnifeBehavior : GrabbableRigidbody
+    internal class YulemanKnifeBehavior : PhysicsProp
     {
         private static ManualLogSource logger = LoggerInstance;
 
 #pragma warning disable 0649
         public AudioSource KnifeAudio = null!;
         public ScanNodeProperties ScanNode = null!;
-        public SCP4666AI YulemanScript = null!;
+        public SCP4666AI? YulemanScript = null!;
         public AudioClip[] SliceSFX = null!;
         public AudioClip[] TearSFX = null!;
         public AudioClip KnifeImpactSFX = null!;
         public AudioClip KnifeWallPullSFX = null!;
         public AudioClip KnifeChargeSFX = null!;
         public GameObject RunePrefab = null!;
-        //public Rigidbody rb = null!;
         public Transform KnifeTip = null!;
         public Collider collider = null!;
 #pragma warning restore 0649
 
-        List<GameObject> EntitiesHitByKnife = [];
+        List<Collider> EntitiesHitByKnife = [];
         public YulemanKnifeRuneBehavior? RuneScript = null!;
-        //public bool isThrown = false;
 
         // Constants
         Vector3 PositionOffsetStab = new Vector3(-0.2f, 0.26f, -0.02f);
@@ -51,25 +49,51 @@ namespace SCP4666.YulemanKnife
         RaycastHit[]? objectsHitByKnife;
         List<RaycastHit> objectsHitByKnifeList = new List<RaycastHit>();
         float timeAtLastDamageDealt;
-        PlayerControllerB previousPlayerHeldBy = null!;
-        Vector3 throwDirection;
+        PlayerControllerB? previousPlayerHeldBy = null!;
 
         float returnTime;
         float returnSpeed = 1f;
         bool returningToPlayer;
-        Vector3 startPosition;
+        Vector3 postThrowPosition;
+        private bool returningToYuleman;
+        public bool isThrown;
+        bool stuck;
 
         // Config Variables
         float chargeTime = 1f;
         int knifeHitForce = 1;
-        public static float throwForce = 3000f;
+        public static float throwForce = 100f;
 
         public override void Update()
         {
+            if (isThrown || stuck)
+            {
+                fallTime = 1f;
+                reachedFloorTarget = true;
+            }
+            bool wasHeld = isHeld;
+            isHeld = true;
             base.Update();
+            isHeld = wasHeld;
+
             if (playerHeldBy != null)
             {
                 previousPlayerHeldBy = playerHeldBy;
+            }
+            if (returningToYuleman && YulemanScript != null)
+            {
+                returnTime += Time.deltaTime * returnSpeed;
+
+                returnTime = Mathf.Clamp01(returnTime);
+
+                transform.position = Vector3.Lerp(postThrowPosition, YulemanScript.RightHandTransform.position, returnTime);
+
+                if (returnTime >= 1f)
+                {
+                    returningToYuleman = false;
+                    returnTime = 0f;
+                    YulemanScript.GrabKnife();
+                }
             }
             if (returningToPlayer && previousPlayerHeldBy != null)
             {
@@ -77,52 +101,87 @@ namespace SCP4666.YulemanKnife
 
                 returnTime = Mathf.Clamp01(returnTime);
 
-                transform.position = Vector3.Lerp(startPosition, RuneScript.transform.position, returnTime);
+                transform.position = Vector3.Lerp(postThrowPosition, GetPositionFrontOfPlayer(previousPlayerHeldBy), returnTime);
 
                 if (returnTime >= 1f)
                 {
                     returningToPlayer = false;
                     returnTime = 0f;
-                    GrabItem();
+                    if (localPlayer == previousPlayerHeldBy)
+                    {
+                        GrabGrabbableObjectOnClient(this);
+                    }
                 }
             }
         }
 
-        public void RayCastDetect()
-        {
-            if (Physics.Raycast(KnifeTip.transform.position, KnifeTip.transform.forward, out RaycastHit hit, 0.1f, knifeMask))
-            {
-            }
-        }
-
-        public void OnTriggerEnter(Collider other) // TODO: THIS WORKS just figure out how to detect collisions faster for faster knife!
+        public void FixedUpdate()
         {
             if (isThrown)
             {
-                logger.LogDebug(LayerMask.LayerToName(other.gameObject.layer));
-                logger.LogDebug(collider.transform.gameObject.tag);
+                Vector3 nextPosition = transform.position + transform.forward * throwForce * Time.fixedDeltaTime;
 
-                if (other.transform.gameObject.layer == 8 || other.transform.gameObject.layer == 11)
+                if (Physics.Raycast(transform.position, nextPosition - transform.position, throwForce * Time.fixedDeltaTime, StartOfRound.Instance.collidersAndRoomMask)) // Detect wall
                 {
-                    logger.LogDebug("Hit wall, stopping knife");
                     isThrown = false;
-                    stuck = true;
-                    rb.isKinematic = true;
-                    RoundManager.Instance.PlayAudibleNoise(transform.position);
-                    KnifeAudio.PlayOneShot(KnifeImpactSFX);
-                    WalkieTalkie.TransmitOneShotAudio(KnifeAudio, KnifeImpactSFX, 0.5f);
-                    return;
+                    StopKnife();
                 }
                 else
                 {
-                    if (!other.transform.TryGetComponent<IHittable>(out var iHit) || EntitiesHitByKnife.Contains(other.transform.gameObject)) { return; }
-                    Vector3 forward = previousPlayerHeldBy.gameplayCamera.transform.forward;
-                    bool hitSuccessful = iHit.Hit(knifeHitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
-                    if (!hitSuccessful) { return; }
-                    EntitiesHitByKnife.Add(other.transform.gameObject);
-                    RoundManager.PlayRandomClip(KnifeAudio, TearSFX);
+                    transform.position = nextPosition;  // Move object if no collision
                 }
             }
+        }
+
+        bool GetWallPosition()
+        {
+            if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, 4000f, StartOfRound.Instance.collidersAndRoomMask))
+            {
+                float offset = Vector3.Distance(KnifeTip.position, transform.position);
+                postThrowPosition = hit.point - transform.forward * offset;
+                return true;
+            }
+
+            logger.LogError("Couldnt find wall");
+            return false;
+        }
+
+        public void OnTriggerEnter(Collider other) // Synced // TODO: THIS WORKS just figure out how to detect collisions faster for faster knife!
+        {
+            if (isThrown)
+            {
+                if (!other.transform.TryGetComponent<IHittable>(out var iHit) || EntitiesHitByKnife.Contains(other)) { return; }
+                Vector3 forward = KnifeTip.transform.forward;
+                bool hitSuccessful = iHit.Hit(knifeHitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
+                if (!hitSuccessful) { return; }
+                EntitiesHitByKnife.Add(other);
+                RoundManager.PlayRandomClip(KnifeAudio, TearSFX);
+            }
+        }
+
+        public void ThrowKnife(Vector3 throwDirection)
+        {
+            parentObject = null;
+            transform.SetParent(null);
+            grabbable = true;
+            isHeld = false;
+            isHeldByEnemy = false;
+            transform.rotation = Quaternion.LookRotation(throwDirection, KnifeTip.up);
+            EnableCollider(true);
+            if (!GetWallPosition()) { return; }
+            isThrown = true;
+        }
+
+        void StopKnife()
+        {
+            logger.LogDebug("Hit wall, stopping knife");
+            isThrown = false;
+            stuck = true;
+            RoundManager.Instance.PlayAudibleNoise(transform.position);
+            KnifeAudio.PlayOneShot(KnifeImpactSFX);
+            WalkieTalkie.TransmitOneShotAudio(KnifeAudio, KnifeImpactSFX, 0.5f);
+            EntitiesHitByKnife.Clear();
+            transform.position = postThrowPosition;
         }
 
         public void EnableCollider(bool enable)
@@ -136,24 +195,24 @@ namespace SCP4666.YulemanKnife
         {
             if (!IsOwner)
             {
-                ChangeOwnershipServerRpc(playerHeldBy.actualClientId);
+                ItemEquippedServerRpc(playerHeldBy.actualClientId);
             }
             else
             {
                 ItemEquippedClientRpc();
             }
             base.EquipItem();
-            ThrowCancel();
+            ChargeCancel();
         }
 
         public override void PocketItem()
         {
             base.PocketItem();
-            ThrowCancel();
+            ChargeCancel();
             HitKnife(cancel: true);
         }
 
-        public override void ItemActivate(bool used, bool buttonDown = true)
+        public override void ItemActivate(bool used, bool buttonDown = true) // Synced
         {
             base.ItemActivate(used, buttonDown);
 
@@ -168,8 +227,8 @@ namespace SCP4666.YulemanKnife
 
                 if (isCharged)
                 {
-                    ThrowCancel();
-                    Throw();
+                    ChargeCancel();
+                    PlayerThrowKnife();
                 }
                 else
                 {
@@ -194,17 +253,17 @@ namespace SCP4666.YulemanKnife
             logger.LogDebug("Knife is charged");
         }
 
-        void Throw()
+        void PlayerThrowKnife()
         {
             logger.LogDebug("Throwing knife...");
             isThrown = true;
 
             if (!IsOwner) { return; }
             playerHeldBy.DiscardHeldObject();
-            ThrowKnifeServerRpc();
+            PlayerThrowKnifeServerRpc();
         }
 
-        void ThrowCancel()
+        void ChargeCancel()
         {
             isCharged = false;
             itemProperties.rotationOffset = RotationOffsetStab;
@@ -330,33 +389,49 @@ namespace SCP4666.YulemanKnife
             base.OnHitGround();
         }
 
-        public override void GrabItem()
+        public override void GrabItem() // Synced
         {
-            if (RuneScript == null) { return; }
-            RuneScript = null;
-            if (localPlayer == previousPlayerHeldBy)
+            if (RuneScript != null && IsOwner)
             {
-                localPlayer.DespawnHeldObject();
-                localPlayer.GrabObjectServerRpc(this.NetworkObject);
-                parentObject = localPlayer.localItemHolder;
+                RuneScript.playerHeldBy.DespawnHeldObject();
                 localPlayer.activatingItem = false;
             }
-            base.GrabItem();
+            YulemanScript = null;
         }
 
         public void ReturnToPlayer()
         {
-            if (previousPlayerHeldBy != null && RuneScript != null)
+            if (previousPlayerHeldBy != null)
             {
-                startPosition = transform.position;
+                stuck = false;
+                postThrowPosition = transform.position;
                 returningToPlayer = true;
+            }
+        }
+
+        public void ReturnToYuleman()
+        {
+            if (YulemanScript != null)
+            {
+                stuck = false;
+                postThrowPosition = transform.position;
+                returningToYuleman = true;
+            }
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            base.OnNetworkDespawn();
+            if (RuneScript != null && RuneScript.playerHeldBy != null)
+            {
+                RuneScript.playerHeldBy.DropAllHeldItemsAndSync();
             }
         }
 
         // RPCs
 
         [ServerRpc(RequireOwnership = false)]
-        public void ChangeOwnershipServerRpc(ulong clientId)
+        public void ItemEquippedServerRpc(ulong clientId)
         {
             if (IsServerOrHost)
             {
@@ -369,61 +444,81 @@ namespace SCP4666.YulemanKnife
         public void ItemEquippedClientRpc()
         {
             isThrown = false;
+            if (stuck) { KnifeAudio.PlayOneShot(KnifeWallPullSFX); }
             stuck = false;
-            rb.isKinematic = true;
             EntitiesHitByKnife.Clear();
             EnableCollider(false);
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void ThrowKnifeServerRpc()
+        public void PlayerThrowKnifeServerRpc()
         {
             if (IsServerOrHost)
             {
-                PlayerControllerB player = previousPlayerHeldBy;
-                GrabbableObject Rune = GameObject.Instantiate(RunePrefab, player.serverItemHolder).GetComponent<YulemanKnifeRuneBehavior>();
-                //Rune.fallTime = 0f;
-                Rune.NetworkObject.Spawn(destroyWithScene: true);
-                Rune.NetworkObject.ChangeOwnership(player.actualClientId);
-
-                ThrowKnifeClientRpc(Rune.NetworkObject);
+                if (previousPlayerHeldBy == null) { return; }
+                logger.LogDebug("spawning rune");
+                RuneScript = GameObject.Instantiate(RunePrefab, GetPositionFrontOfPlayer(previousPlayerHeldBy), Quaternion.identity).GetComponentInChildren<YulemanKnifeRuneBehavior>();
+                RuneScript.fallTime = 0f;
+                RuneScript.KnifeScript = this;
+                RuneScript.NetworkObject.Spawn(destroyWithScene: true);
+                PlayerThrowKnifeClientRpc(RuneScript.NetworkObject);
             }
         }
 
         [ClientRpc]
-        public void ThrowKnifeClientRpc(NetworkObjectReference runeRef)
+        public void PlayerThrowKnifeClientRpc(NetworkObjectReference netRef)
         {
-            if (runeRef.TryGet(out NetworkObject runeNetObj))
+            if (previousPlayerHeldBy == null) { logger.LogError("PreviousPlayerHeldBy is null"); return; }
+            PlayerControllerB player = previousPlayerHeldBy;
+            if (netRef.TryGet(out NetworkObject netObj))
             {
-                RuneScript = runeNetObj.GetComponent<YulemanKnifeRuneBehavior>();
+                RuneScript = netObj.GetComponent<YulemanKnifeRuneBehavior>();
                 RuneScript.KnifeScript = this;
-                
-                PlayerControllerB player = previousPlayerHeldBy;
-                throwDirection = player.playerEye.transform.forward;
-                parentObject = null;
-                transform.SetParent(null);
-                transform.rotation = Quaternion.LookRotation(throwDirection, KnifeTip.up);
-                EnableCollider(true);
-                isThrown = true;
-                rb.isKinematic = false;
-                rb.AddForce(throwDirection * throwForce);
 
                 if (localPlayer == player)
                 {
-                    localPlayer.GrabObjectServerRpc(runeNetObj);
+                    GrabGrabbableObjectOnClient(RuneScript);
+                }
+
+                Vector3 throwDirection = player.playerEye.transform.forward;
+                ThrowKnife(throwDirection);
+            }
+        }
+
+        /*[ClientRpc]
+        public void PlayerThrowKnifeClientRpc()
+        {
+            if (IsOwner)
+            {
+                RuneScript = GameObject.Instantiate(RunePrefab, transform.forward * 2, Quaternion.identity).GetComponentInChildren<YulemanKnifeRuneBehavior>();
+                RuneScript.fallTime = 0f;
+                RuneScript.NetworkObject.Spawn(destroyWithScene: true);
+                RuneScript.KnifeScript = this;
+                PerformInteractOnPlayer(localPlayer);
+            }
+
+            if (runeRef.TryGet(out NetworkObject runeNetObj))
+            {
+                
+                RuneScript = runeNetObj.GetComponent<YulemanKnifeRuneBehavior>();
+                RuneScript.KnifeScript = this;
+
+                if (previousPlayerHeldBy == null) { logger.LogError("PreviousPlayerHeldBy is null"); return; }
+                PlayerControllerB player = previousPlayerHeldBy;
+                Vector3 throwDirection = player.playerEye.transform.forward;
+                ThrowKnife(throwDirection);
+
+                if (localPlayer == player)
+                {
+                    //localPlayer.GrabObjectServerRpc(runeNetObj);
                     RuneScript.parentObject = localPlayer.localItemHolder;
                     RuneScript.GrabItemOnClient();
                     logger.LogDebug("Grabbed rune item");
                 }
 
                 player.currentlyHeldObjectServer = RuneScript;
-
-                /*if (IsServerOrHost)
-                {
-                    logger.LogDebug("Adding force");
-                }*/
             }
-        }
+        }*/
 
         [ServerRpc(RequireOwnership = false)]
         public void HitShovelServerRpc(int hitSurfaceID)
