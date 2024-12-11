@@ -1,15 +1,15 @@
 ManifestFileVersion: 0
-CRC: 1105556464
+CRC: 3511859784
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: ef9e6887eb694a3e24cd90cafc2c45e1
+    Hash: 61d246124077db047d837f18ffd01bf2
   TypeTreeHash:
     serializedVersion: 2
-    Hash: 1eb99cb7a5206bdf99ae84adbd6dfe54
+    Hash: dc84e38288f171951020741d436139ab
   IncrementalBuildHash:
     serializedVersion: 2
-    Hash: ef9e6887eb694a3e24cd90cafc2c45e1
+    Hash: 61d246124077db047d837f18ffd01bf2
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -45,7 +45,11 @@ ClassTypes:
 - Class: 114
   Script: {fileID: 1863187740, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
 - Class: 114
+  Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
+- Class: 114
   Script: {fileID: 442677342, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
 - Class: 114
   Script: {fileID: 11500000, guid: 65d3fcb39dd67306e9bb17a603308070, type: 3}
 - Class: 114
@@ -65,16 +69,22 @@ ClassTypes:
 - Class: 114
   Script: {fileID: 11500000, guid: 6d7127b8f98ca8ec9896b384a71d39a2, type: 3}
 - Class: 114
+  Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+- Class: 114
   Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
 - Class: 115
-  Script: {instanceID: 0}
-- Class: 134
   Script: {instanceID: 0}
 - Class: 137
   Script: {instanceID: 0}
 - Class: 195
   Script: {instanceID: 0}
 - Class: 213
+  Script: {instanceID: 0}
+- Class: 222
+  Script: {instanceID: 0}
+- Class: 223
+  Script: {instanceID: 0}
+- Class: 224
   Script: {instanceID: 0}
 - Class: 241
   Script: {instanceID: 0}
@@ -93,7 +103,12 @@ SerializeReferenceClassIdentifiers:
   ClassName: NavSizeLimit
 - AssemblyName: Unity.Netcode.Components
   ClassName: Unity.Netcode.Components.NetworkAnimator/TransitionStateinfo
+- AssemblyName: UnityEngine.CoreModule
+  ClassName: UnityEngine.Events.PersistentCallGroup
+- AssemblyName: UnityEngine.UI
+  ClassName: UnityEngine.UI.MaskableGraphic/CullStateChangedEvent
 Assets:
+- Assets/ModAssets/BlackScreenOverlay.prefab
 - Assets/ModAssets/SCP4666Enemy.asset
 - Assets/ModAssets/YulemanKnifeItem.asset
 - Assets/ModAssets/YulemanKnifeRuneItem.asset

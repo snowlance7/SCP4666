@@ -27,9 +27,12 @@ namespace SCP4666
 
         public static AssetBundle? ModAssets;
 
+        public GameObject BlackScreenOverlay;
+
         // Configs
 
         // SCP-4666 Configs
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public static ConfigEntry<bool> configEnableSCP4666;
         public static ConfigEntry<string> config4666LevelRarities;
         public static ConfigEntry<string> config4666CustomLevelRarities;
@@ -44,6 +47,7 @@ namespace SCP4666
         // Sack Configs
         public static ConfigEntry<int> configSackMinValue;
         public static ConfigEntry<int> configSackMaxValue;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         private void Awake()
         {
@@ -208,35 +212,10 @@ namespace SCP4666
             }
         }
 
-        /*public static void PerformInteractOnPlayer(PlayerControllerB player)
+        public static void MakePlayerScreenBlack(bool value)
         {
-            if (player.IsOwner && player.isPlayerDead && (!player.IsServer || player.isHostPlayerObject))
-            {
-                if (!StartOfRound.Instance.overrideSpectateCamera && player.spectatedPlayerScript != null && !player.spectatedPlayerScript.isPlayerDead)
-                {
-                    player.SpectateNextPlayer();
-                }
-            }
-            else
-            {
-                if (((!player.IsOwner || !player.isPlayerControlled || (player.IsServer && !player.isHostPlayerObject)) && !player.isTestingPlayer) || player.timeSinceSwitchingSlots < 0.2f || player.inSpecialMenu)
-                {
-                    return;
-                }
-                ShipBuildModeManager.Instance.CancelBuildMode();
-                if (!player.isGrabbingObjectAnimation && !player.isTypingChat && !player.inTerminalMenu && !player.throwingObject && !player.IsInspectingItem && !(player.inAnimationWithEnemy != null) && !player.jetpackControls && !player.disablingJetpackControls && !StartOfRound.Instance.suckingPlayersOutOfShip)
-                {
-                    if (!player.activatingItem && !player.waitingToDropItem)
-                    {
-                        player.BeginGrabObject();
-                    }
-                    if (!(player.hoveringOverTrigger == null) && !player.hoveringOverTrigger.holdInteraction && (!player.isHoldingObject || player.hoveringOverTrigger.oneHandedItemAllowed) && (!player.twoHanded || (player.hoveringOverTrigger.twoHandedItemAllowed && !player.hoveringOverTrigger.specialCharacterAnimation)) && player.InteractTriggerUseConditionsMet())
-                    {
-                        player.hoveringOverTrigger.Interact(player.thisPlayerBody);
-                    }
-                }
-            }
-        }*/
+            PluginInstance.BlackScreenOverlay.SetActive(value);
+        }
 
         public static Vector3 GetPositionFrontOfPlayer(PlayerControllerB player, float distance = 1)
         {

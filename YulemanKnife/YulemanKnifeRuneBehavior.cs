@@ -51,7 +51,7 @@ namespace SCP4666.YulemanKnife
                 return;
             }
 
-            if (buttonDown && playerHeldBy != null)
+            if (buttonDown && playerHeldBy != null && !KnifeScript.isThrown)
             {
                 KnifeScript.ReturnToPlayer();
                 playerHeldBy.DespawnHeldObject();
