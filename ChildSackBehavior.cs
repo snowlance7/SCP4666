@@ -10,18 +10,11 @@ namespace SCP4666
 {
     internal class ChildSackBehavior : PhysicsProp
     {
-        private static ManualLogSource logger = LoggerInstance;
-
-#pragma warning disable 0649
-        public AudioSource ItemAudio = null!;
-        public ScanNodeProperties ScanNode = null!;
-#pragma warning restore 0649
-
         public override void Update()
         {
             base.Update();
 
-            if (isInShipRoom && StartOfRound.Instance.allPlayersDead)
+            if (isInShipRoom)
             {
                 StartOfRound.Instance.ReviveDeadPlayers();
                 NetworkObject.Despawn(true);

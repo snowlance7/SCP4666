@@ -48,7 +48,7 @@ namespace SCP4666.YulemanKnife
         RaycastHit[]? objectsHitByKnife;
         List<RaycastHit> objectsHitByKnifeList = new List<RaycastHit>();
         float timeAtLastDamageDealt;
-        PlayerControllerB? previousPlayerHeldBy = null!;
+        public PlayerControllerB? previousPlayerHeldBy = null!;
 
         float returnTime;
         float returnSpeed = 1f;
@@ -58,13 +58,14 @@ namespace SCP4666.YulemanKnife
         private bool returningToYuleman;
         public bool isThrown;
         public bool stuck;
-        bool ownedByYuleman;
+        bool canFall = true;
+        float maxThrowDistance = 400f;
 
         // Config Variables
         float chargeTime = 1f;
         int knifeHitForce = 1;
-        public static float throwForce = 100f;
-        float maxThrowDistance = 20f;
+        float throwForce = 100f;
+        int knifeHitForceYuleman = 25;
 
         public override void Start()
         {
@@ -73,13 +74,18 @@ namespace SCP4666.YulemanKnife
             {
                 logger.LogDebug("Setting knife owned by yuleman");
                 grabbable = false;
-                ownedByYuleman = true;
+                canFall = false;
+                ScanNode.enabled = false;
             }
+
+            if (!IsServerOrHost) { return; }
+            maxThrowDistance = Mathf.Max(localPlayer.gameplayCamera.farClipPlane, 400);
+            SetMaxThrowDistanceClientRpc(maxThrowDistance);
         }
 
         public override void Update()
         {
-            if (!isThrown && !stuck && !returningToPlayer && !returningToYuleman && !ownedByYuleman) { base.Update(); }
+            if (!isThrown && !stuck && !returningToPlayer && !returningToYuleman && canFall) { base.Update(); }
             else
             {
                 fallTime = 1f;
@@ -105,7 +111,6 @@ namespace SCP4666.YulemanKnife
                 if (returnTime >= 1f && IsServerOrHost)
                 {
                     returningToYuleman = false;
-                    //SCP4666AI.Instance.networkAnimator.SetTrigger("pickup");
                     NetworkObject.Despawn();
                 }
                 return;
@@ -170,10 +175,20 @@ namespace SCP4666.YulemanKnife
         {
             if (isThrown)
             {
+                logger.LogDebug("Hit " + other.gameObject.name);
                 if (!other.transform.TryGetComponent<IHittable>(out var iHit) || EntitiesHitByKnife.Contains(other)) { return; }
+                logger.LogDebug("Hit");
                 Vector3 forward = KnifeTip.transform.forward;
-                bool hitSuccessful = iHit.Hit(knifeHitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
-                if (!hitSuccessful) { return; }
+                if (previousPlayerHeldBy != null)
+                {
+                    bool hitSuccessful = iHit.Hit(knifeHitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
+                    if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
+                }
+                else
+                {
+                    if (!other.TryGetComponent<PlayerControllerB>(out PlayerControllerB player)) { return; }
+                    player.DamagePlayer(knifeHitForceYuleman, true, false, CauseOfDeath.Stabbing);
+                }
                 EntitiesHitByKnife.Add(other);
                 RoundManager.PlayRandomClip(KnifeAudio, TearSFX);
             }
@@ -194,6 +209,7 @@ namespace SCP4666.YulemanKnife
                 postThrowPosition = transform.position + throwDirection * maxThrowDistance;
             }
             isThrown = true;
+            canFall = false;
         }
 
         void StopKnife(bool hitWall)
@@ -207,6 +223,7 @@ namespace SCP4666.YulemanKnife
             stuck = hitWall;
             if (!stuck)
             {
+                canFall = true;
                 FallToGround();
                 return;
             }
@@ -217,6 +234,7 @@ namespace SCP4666.YulemanKnife
 
         public void EnableCollider(bool enable)
         {
+            ScanNode.enabled = !enable;
             collider.enabled = enable;
             collider.includeLayers = knifeMask;
             collider.excludeLayers = enable ? 0 : defaultExcludeMask;
@@ -288,6 +306,7 @@ namespace SCP4666.YulemanKnife
         {
             logger.LogDebug("Throwing knife...");
             isThrown = true;
+            canFall = false;
 
             if (!IsOwner) { return; }
             playerHeldBy.DiscardHeldObject();
@@ -410,13 +429,13 @@ namespace SCP4666.YulemanKnife
 
         public override void FallWithCurve()
         {
-            if (isThrown || ownedByYuleman) { return; }
+            if (isThrown || !canFall) { return; }
             base.FallWithCurve();
         }
 
         public override void OnHitGround()
         {
-            if (isThrown || ownedByYuleman) { return; }
+            if (isThrown || !canFall) { return; }
             base.OnHitGround();
         }
 
@@ -424,7 +443,7 @@ namespace SCP4666.YulemanKnife
         {
             if (RuneScript != null && IsOwner)
             {
-                ownedByYuleman = false;
+                canFall = true;
                 RuneScript.playerHeldBy.DespawnHeldObject();
                 localPlayer.activatingItem = false;
             }
@@ -434,6 +453,7 @@ namespace SCP4666.YulemanKnife
         {
             if (previousPlayerHeldBy != null)
             {
+                canFall = false;
                 stuck = false;
                 postThrowPosition = transform.position;
                 returningToPlayer = true;
@@ -444,6 +464,7 @@ namespace SCP4666.YulemanKnife
         {
             if (SCP4666AI.Instance != null)
             {
+                canFall = false;
                 stuck = false;
                 postThrowPosition = transform.position;
                 returningToYuleman = true;
@@ -475,11 +496,12 @@ namespace SCP4666.YulemanKnife
         public void ItemEquippedClientRpc()
         {
             isThrown = false;
-            ownedByYuleman = false;
+            canFall = true;
             if (stuck) { KnifeAudio.PlayOneShot(KnifeWallPullSFX); }
             stuck = false;
             EntitiesHitByKnife.Clear();
             EnableCollider(false);
+            ScanNode.enabled = true;
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -517,40 +539,11 @@ namespace SCP4666.YulemanKnife
             }
         }
 
-        /*[ClientRpc]
-        public void PlayerThrowKnifeClientRpc()
+        [ClientRpc]
+        public void SetMaxThrowDistanceClientRpc(float value)
         {
-            if (IsOwner)
-            {
-                RuneScript = GameObject.Instantiate(RunePrefab, transform.forward * 2, Quaternion.identity).GetComponentInChildren<YulemanKnifeRuneBehavior>();
-                RuneScript.fallTime = 0f;
-                RuneScript.NetworkObject.Spawn(destroyWithScene: true);
-                RuneScript.KnifeScript = this;
-                PerformInteractOnPlayer(localPlayer);
-            }
-
-            if (runeRef.TryGet(out NetworkObject runeNetObj))
-            {
-                
-                RuneScript = runeNetObj.GetComponent<YulemanKnifeRuneBehavior>();
-                RuneScript.KnifeScript = this;
-
-                if (previousPlayerHeldBy == null) { logger.LogError("PreviousPlayerHeldBy is null"); return; }
-                PlayerControllerB player = previousPlayerHeldBy;
-                Vector3 throwDirection = player.playerEye.transform.forward;
-                ThrowKnife(throwDirection);
-
-                if (localPlayer == player)
-                {
-                    //localPlayer.GrabObjectServerRpc(runeNetObj);
-                    RuneScript.parentObject = localPlayer.localItemHolder;
-                    RuneScript.GrabItemOnClient();
-                    logger.LogDebug("Grabbed rune item");
-                }
-
-                player.currentlyHeldObjectServer = RuneScript;
-            }
-        }*/
+            maxThrowDistance = value;
+        }
 
         [ServerRpc(RequireOwnership = false)]
         public void HitShovelServerRpc(int hitSurfaceID)
