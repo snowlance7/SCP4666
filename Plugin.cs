@@ -213,6 +213,24 @@ namespace SCP4666
             }
         }
 
+        public static void FreezePlayer(PlayerControllerB player, bool value)
+        {
+            player.disableInteract = value;
+            //player.disableLookInput = value;
+            player.disableMoveInput = value;
+            player.DropAllHeldItemsAndSync();
+        }
+
+        public static void MakePlayerInvisible(PlayerControllerB player, bool value)
+        {
+            GameObject scavengerModel = player.gameObject.transform.Find("ScavengerModel").gameObject;
+            if (scavengerModel == null) { LoggerInstance.LogError("ScavengerModel not found"); return; }
+            scavengerModel.transform.Find("LOD1").gameObject.SetActive(!value);
+            scavengerModel.transform.Find("LOD2").gameObject.SetActive(!value);
+            scavengerModel.transform.Find("LOD3").gameObject.SetActive(!value);
+
+        }
+
         public static bool IsPlayerChild(PlayerControllerB player)
         {
             return player.thisPlayerBody.localScale.y < 1f;

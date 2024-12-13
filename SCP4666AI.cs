@@ -42,11 +42,13 @@ namespace SCP4666
 
         List<PlayerControllerB> TargetPlayers = [];
         PlayerControllerB? playerInSack = null;
+        PlayerControllerB? grabbingPlayer;
         bool localPlayerHasSeenYuleman = false;
 
         float timeSinceDamagePlayer;
         float timeSinceTeleport;
         float timeSinceKnifeThrown;
+        float timeSinceGrabPlayer;
 
         bool teleporting;
 
@@ -54,7 +56,6 @@ namespace SCP4666
         bool isKnifeThrown;
         bool callingKnifeBack;
         bool isAngry;
-        bool grabbingPlayer;
         int timesHitWhileAbducting;
 
         // Constants
@@ -64,9 +65,9 @@ namespace SCP4666
         int maxPresentCount = 5;
         float teleportCooldown = 10f;
         float knifeThrowCooldown = 10f;
-        float knifeReturnCooldown = 1f;
+        float knifeReturnCooldown = 2f;
         float knifeThrowMinDistance = 5f;
-        float knifeThrowMaxDistance = 10f;
+        float knifeThrowMaxDistance = 15f;
         float teleportDistance = 15f;
         float distanceToPickUpKnife = 15f;
         int sliceDamage = 25;
@@ -108,7 +109,7 @@ namespace SCP4666
 
             if (IsServerOrHost)
             {
-                // Spawn presents
+                // TODO: Spawn presents
                 SetEnemyOutsideClientRpc(true);
             }
 
@@ -133,7 +134,7 @@ namespace SCP4666
         public override void OnNetworkDespawn()
         {
             base.OnNetworkDespawn();
-            Instance = null;
+            DropPlayer();
         }
 
         public override void Update()
@@ -148,6 +149,7 @@ namespace SCP4666
             timeSinceDamagePlayer += Time.deltaTime;
             timeSinceTeleport += Time.deltaTime;
             timeSinceKnifeThrown += Time.deltaTime;
+            timeSinceGrabPlayer += Time.deltaTime;
 
             if (localPlayer.HasLineOfSightToPosition(transform.position, 30f, 20) && localPlayer != playerInSack)
             {
@@ -160,14 +162,16 @@ namespace SCP4666
                 }
             }
 
-            if (inSpecialAnimationWithPlayer != null && grabbingPlayer)
+            if (grabbingPlayer != null)
             {
-                inSpecialAnimationWithPlayer.transform.position = RightHandTransform.position;
+                grabbingPlayer.transform.position = RightHandTransform.position;
+                grabbingPlayer.takingFallDamage = false;
             }
 
             if (playerInSack != null)
             {
                 playerInSack.transform.position = ChildSackTransform.position;
+                playerInSack.takingFallDamage = false;
             }
 
             if (stunNormalizedTimer > 0f || inSpecialAnimation)
@@ -404,33 +408,41 @@ namespace SCP4666
             return targetPlayer != null;
         }
 
-        public void FreezePlayer(PlayerControllerB player, bool value)
+        public void DropPlayer()
         {
-            player.disableInteract = value;
-            player.disableLookInput = value;
-            player.disableMoveInput = value;
-        }
-
-        public void DropPlayerFromSack()
-        {
-            if (playerInSack == null)
+            if (playerInSack != null)
             {
-                logger.LogError("Player in sack in null");
+                if (localPlayer == playerInSack)
+                {
+                    MakePlayerScreenBlack(false);
+                    FreezePlayer(localPlayer, false);
+                    localPlayerHasSeenYuleman = false;
+                }
+                
+                // TODO: Unmuffle player voice
+                MakePlayerInvisible(playerInSack, false);
                 timesHitWhileAbducting = 0;
+                timeSinceGrabPlayer = 0f;
                 creatureAnimator.SetBool("bagWalk", false);
-                return;
+
+                playerInSack.transform.SetParent(null);
+                playerInSack = null;
             }
 
-            if (localPlayer == playerInSack)
+            if (grabbingPlayer != null)
             {
-                MakePlayerScreenBlack(false);
+                if (localPlayer == playerInSack)
+                {
+                    FreezePlayer(localPlayer, false);
+                    localPlayerHasSeenYuleman = false;
+                }
+
+                timesHitWhileAbducting = 0;
+                timeSinceGrabPlayer = 0f;
+
+                grabbingPlayer.transform.SetParent(null);
+                grabbingPlayer = null;
             }
-
-            TargetPlayers.Add(playerInSack);
-
-            playerInSack = null;
-            timesHitWhileAbducting = 0;
-            creatureAnimator.SetBool("bagWalk", false);
         }
 
         #region Overrides
@@ -440,8 +452,7 @@ namespace SCP4666
             if (!IsServerOrHost || currentBehaviourStateIndex != (int)State.Abducting) { return; }
             if (playerInSack != null)
             {
-                KillPlayerClientRpc(playerInSack.actualClientId);
-                playerInSack = null;
+                KillPlayerInSackClientRpc();
             }
             KillEnemyOnOwnerClient(true);
 
@@ -450,7 +461,7 @@ namespace SCP4666
         public override void KillEnemy(bool destroy = false)
         {
             if (inSpecialAnimation) { return; }
-            if (playerInSack != null) { DropPlayerFromSack(); }
+            DropPlayer();
             if (IsServerOrHost && !daytimeEnemyLeaving)
             {
                 if (isKnifeOwned)
@@ -473,20 +484,17 @@ namespace SCP4666
 
             if (enemyHP <= 0)
             {
+                DropPlayer();
                 KillEnemyOnOwnerClient();
-                if (playerInSack != null)
-                {
-                    DropPlayerFromSack();
-                }
                 return;
             }
 
-            if (playerInSack != null)
+            if (playerInSack != null || grabbingPlayer != null)
             {
                 timesHitWhileAbducting++;
                 if (timesHitWhileAbducting >= hitAmountToDropPlayer)
                 {
-                    DropPlayerFromSack();
+                    DropPlayer();
                 }
             }
         }
@@ -495,6 +503,9 @@ namespace SCP4666
         public override void HitFromExplosion(float distance)
         {
             base.HitFromExplosion(distance);
+
+            DropPlayer();
+
             if (distance < 2)
             {
                 HitEnemy(10);
@@ -513,32 +524,31 @@ namespace SCP4666
         {
             base.OnCollideWithPlayer(other);
             PlayerControllerB player = MeetsStandardPlayerCollisionConditions(other);
-            if (playerInSack != null && player != null && playerInSack == player) { return; }
+            if (player == null) { return; }
+            if (playerInSack != null && playerInSack == player) { return; }
             if (timeSinceDamagePlayer > 3f)
             {
-                if (player != null && !player.isPlayerDead && !inSpecialAnimation && !isEnemyDead && player == targetPlayer)
+                if (player.isPlayerDead || inSpecialAnimation || isEnemyDead || player != targetPlayer) { return; }
+                timeSinceDamagePlayer = 0f;
+
+                if (IsPlayerChild(player) && timeSinceGrabPlayer > 10f)
                 {
-                    timeSinceDamagePlayer = 0f;
+                    inSpecialAnimation = true;
+                    FreezePlayer(player, true);
+                    GrabPlayerServerRpc(player.actualClientId);
+                    return;
+                }
 
-                    if (IsPlayerChild(player))
-                    {
-                        inSpecialAnimation = true;
-                        FreezePlayer(player, true);
-                        GrabPlayerServerRpc(player.actualClientId);
-                        return;
-                    }
-
-                    if (isKnifeOwned && !isKnifeThrown)
-                    {
-                        int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
-                        player.DamagePlayer(sliceDamage, true, true, CauseOfDeath.Stabbing, deathAnim);
-                        DoAnimationServerRpc("slash");
-                    }
-                    else
-                    {
-                        player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
-                        DoAnimationServerRpc("slap");
-                    }
+                if (isKnifeOwned && !isKnifeThrown)
+                {
+                    int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
+                    player.DamagePlayer(sliceDamage, true, true, CauseOfDeath.Stabbing, deathAnim);
+                    DoAnimationServerRpc("slash");
+                }
+                else
+                {
+                    player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
+                    DoAnimationServerRpc("slap");
                 }
             }
         }
@@ -656,18 +666,21 @@ namespace SCP4666
         {
             logger.LogDebug("GrabPlayer() called");
             inSpecialAnimation = true;
-            inSpecialAnimationWithPlayer = targetPlayer;
-            grabbingPlayer = true;
+            grabbingPlayer = targetPlayer;
+            grabbingPlayer.transform.SetParent(RightHandTransform);
         }
 
         public void PutPlayerInSack()
         {
             logger.LogDebug("PutPlayerInSack() called");
-            grabbingPlayer = false;
             inSpecialAnimation = false;
-            playerInSack = inSpecialAnimationWithPlayer;
-            inSpecialAnimationWithPlayer = null;
-            TargetPlayers.Remove(playerInSack);
+            if (grabbingPlayer == null) { logger.LogError("grabbingPlayer is null"); return; }
+            TargetPlayers.Remove(grabbingPlayer);
+
+            playerInSack = grabbingPlayer;
+            grabbingPlayer = null;
+            playerInSack.transform.SetParent(ChildSackTransform);
+
             creatureVoice.PlayOneShot(LaughSFX);
             creatureAnimator.SetBool("bagWalk", true);
 
@@ -675,6 +688,9 @@ namespace SCP4666
             {
                 MakePlayerScreenBlack(true);
             }
+
+            MakePlayerInvisible(playerInSack, true);
+            // TODO: Muffle player voice
         }
 
         public void FinishStartAnimation()
@@ -721,10 +737,12 @@ namespace SCP4666
         }
 
         [ClientRpc]
-        public void KillPlayerClientRpc(ulong clientId)
+        public void KillPlayerInSackClientRpc()
         {
-            if (localPlayer.actualClientId != clientId) { return; }
-            MakePlayerScreenBlack(false);
+            if (playerInSack == null) { logger.LogError("playerInSack is null"); return; }
+            PlayerControllerB player = playerInSack;
+            DropPlayer();
+            if (localPlayer != player) { return; }
             localPlayer.KillPlayer(Vector3.zero, false);
         }
 
@@ -752,11 +770,16 @@ namespace SCP4666
         public void GrabPlayerServerRpc(ulong clientId)
         {
             if (!IsServerOrHost) { return; }
+            GrabPlayerClientRpc(clientId);
+        }
 
-            ChangeTargetPlayerClientRpc(clientId);
-            targetPlayer = PlayerFromId(clientId);
+        [ClientRpc]
+        public void GrabPlayerClientRpc(ulong clientId)
+        {
             inSpecialAnimation = true;
-            networkAnimator.SetTrigger("grabPlayer");
+            targetPlayer = PlayerFromId(clientId);
+            TargetPlayers.Remove(targetPlayer);
+            creatureAnimator.SetTrigger("grabPlayer");
         }
 
         [ServerRpc(RequireOwnership = false)]

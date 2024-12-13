@@ -187,7 +187,8 @@ namespace SCP4666.YulemanKnife
                 else
                 {
                     if (!other.TryGetComponent<PlayerControllerB>(out PlayerControllerB player)) { return; }
-                    player.DamagePlayer(knifeHitForceYuleman, true, false, CauseOfDeath.Stabbing);
+                    if (localPlayer != player) { return; }
+                    player.DamagePlayer(knifeHitForceYuleman, true, true, CauseOfDeath.Stabbing);
                 }
                 EntitiesHitByKnife.Add(other);
                 RoundManager.PlayRandomClip(KnifeAudio, TearSFX);

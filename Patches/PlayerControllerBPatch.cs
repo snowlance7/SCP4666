@@ -35,8 +35,11 @@ namespace SCP4666.Patches
         {
             try
             {
+                MakePlayerInvisible(__instance, false);
+                __instance.playerRigidbody.isKinematic = true;
                 if (__instance != localPlayer) { return; }
                 MakePlayerScreenBlack(false);
+                FreezePlayer(localPlayer, false);
             }
             catch (Exception e)
             {
