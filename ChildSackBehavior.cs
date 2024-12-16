@@ -8,8 +8,10 @@ using static SCP4666.Plugin;
 
 namespace SCP4666
 {
-    internal class ChildSackBehavior : PhysicsProp
+    public class ChildSackBehavior : PhysicsProp
     {
+        public ScanNodeProperties ScanNode = null!;
+
         public enum RespawnType
         {
             Manual,
@@ -20,6 +22,32 @@ namespace SCP4666
 
         public RespawnType respawnType = RespawnType.TeamWipe;
         public bool activated;
+
+        public override void Start()
+        {
+            base.Start();
+            respawnType = configSackRespawnType.Value;
+        }
+
+        public override void Update()
+        {
+            base.Update();
+
+            if (activated && StartOfRound.Instance.inShipPhase)
+            {
+                NetworkObject.Despawn();
+            }
+        }
+
+        public override void ItemActivate(bool used, bool buttonDown = true)
+        {
+            base.ItemActivate(used, buttonDown);
+            if (buttonDown)
+            {
+                activated = true;
+                ScanNode.subText = "ACTIVATED";
+            }
+        }
 
         public void Activate()
         {

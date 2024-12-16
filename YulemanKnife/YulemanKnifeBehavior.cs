@@ -66,6 +66,12 @@ namespace SCP4666.YulemanKnife
         public override void Start()
         {
             base.Start();
+
+            chargeTime = configChargeTime.Value;
+            knifeHitForce = configKnifeHitForce.Value;
+            throwForce = configThrowForce.Value;
+            knifeHitForceYuleman = configKnifeHitForceYuleman.Value;
+
             if (SCP4666AI.Instance != null && SCP4666AI.Instance.KnifeScript == this)
             {
                 logger.LogDebug("Setting knife owned by yuleman");

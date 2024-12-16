@@ -100,6 +100,20 @@ namespace SCP4666
             base.Start();
             logger.LogDebug("SCP-4666 Spawned");
 
+            minPresentCount = configMinPresentCount.Value;
+            maxPresentCount = configMaxPresentCount.Value;
+            teleportCooldown = configTeleportCooldown.Value;
+            knifeThrowCooldown = configKnifeThrowCooldown.Value;
+            knifeReturnCooldown = configKnifeReturnCooldown.Value;
+            knifeThrowMinDistance = configKnifeThrowMinDistance.Value;
+            knifeThrowMaxDistance = configKnifeThrowMaxDistance.Value;
+            teleportDistance = configTeleportDistance.Value;
+            distanceToPickUpKnife = configDistanceToPickUpKnife.Value;
+            sliceDamage = configSliceDamage.Value;
+            slapDamage = configSlapDamage.Value;
+            hitAmountToDropPlayer = configHitAmountToDropPlayer.Value;
+            makeScreenBlackAbduct = configMakeScreenBlackAbduct.Value;
+
             currentBehaviourStateIndex = (int)State.Spawning;
 
             if (IsServerOrHost)
@@ -476,11 +490,15 @@ namespace SCP4666
                 if (isKnifeOwned)
                 {
                     YulemanKnifeBehavior knife = GameObject.Instantiate(KnifePrefab, transform.position, Quaternion.identity).GetComponentInChildren<YulemanKnifeBehavior>();
+                    int knifeValue = UnityEngine.Random.Range(configSackMinValue.Value, configSackMaxValue.Value);
+                    knife.SetScrapValue(knifeValue);
                     knife.NetworkObject.Spawn(true);
-                    knife.FallToGround();
                 }
                 ChildSackBehavior sack = GameObject.Instantiate(ChildSackPrefab, transform.position, Quaternion.identity).GetComponentInChildren<ChildSackBehavior>();
+                int sackValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value);
+                sack.SetScrapValue(sackValue);
                 sack.NetworkObject.Spawn();
+                
             }
             base.KillEnemy(destroy);
         }
