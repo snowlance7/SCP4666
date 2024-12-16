@@ -1,19 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using BepInEx.Logging;
-using GameNetcodeStuff;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using BepInEx.Logging;
 using Unity.Netcode;
-using Unity.Netcode.Components;
 using UnityEngine;
-using UnityEngine.UIElements.UIR;
 using static SCP4666.Plugin;
-using Steamworks.Data;
 
 namespace SCP4666.YulemanKnife
 {

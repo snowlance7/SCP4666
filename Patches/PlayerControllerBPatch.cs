@@ -1,8 +1,6 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 using static SCP4666.Plugin;
 
@@ -35,8 +33,10 @@ namespace SCP4666.Patches
         {
             try
             {
+                __instance.voiceMuffledByEnemy = false;
                 MakePlayerInvisible(__instance, false);
                 __instance.playerRigidbody.isKinematic = true;
+                localPlayer.thisPlayerBody.localScale = new Vector3(1f, 1f, 1f);
                 if (__instance != localPlayer) { return; }
                 MakePlayerScreenBlack(false);
                 FreezePlayer(localPlayer, false);

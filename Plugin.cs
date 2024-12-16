@@ -39,9 +39,9 @@ namespace SCP4666
         public static ConfigEntry<string> config4666CustomLevelRarities;
 
         // Enchanted Knife Configs
-        public static ConfigEntry<bool> configSpawnKnifeOnGround;
-        public static ConfigEntry<string> configKnifeLevelRarities;
-        public static ConfigEntry<string> configKnifeCustomLevelRarities;
+        //public static ConfigEntry<bool> configSpawnKnifeOnGround;
+        //public static ConfigEntry<string> configKnifeLevelRarities;
+        //public static ConfigEntry<string> configKnifeCustomLevelRarities;
         public static ConfigEntry<int> configKnifeMinValue;
         public static ConfigEntry<int> configKnifeMaxValue;
 
@@ -67,13 +67,13 @@ namespace SCP4666
 
             // SCP-4666 Configs
             configEnableSCP4666 = Config.Bind("SCP-4666", "Enable SCP-4666", true, "Set to false to disable spawning SCP-4666. Use this in combination with configKnifeLevelRarities and configKnifeCustomLevelRarities if you just want to use the knife.");
-            config4666LevelRarities = Config.Bind("SCP-4666 Rarities", "Level Rarities", "ExperimentationLevel:5, AssuranceLevel:6, VowLevel:9, OffenseLevel:10, AdamanceLevel:15, MarchLevel:13, RendLevel:50, DineLevel:50, TitanLevel:20, ArtificeLevel:20, EmbrionLevel:25, Modded:15", "Rarities for each level. See default for formatting.");
-            config4666CustomLevelRarities = Config.Bind("SCP-4666 Rarities", "Custom Level Rarities", "Secret LabsLevel:0", "Rarities for modded levels. Same formatting as level rarities.");
+            config4666LevelRarities = Config.Bind("SCP-4666 Rarities", "Level Rarities", "ExperimentationLevel:5, AssuranceLevel:6, VowLevel:9, OffenseLevel:10, AdamanceLevel:10, MarchLevel:10, RendLevel:75, DineLevel:75, TitanLevel:75, ArtificeLevel:20, EmbrionLevel:25, Modded:15", "Rarities for each level. See default for formatting.");
+            config4666CustomLevelRarities = Config.Bind("SCP-4666 Rarities", "Custom Level Rarities", "Secret LabsLevel:100", "Rarities for modded levels. Same formatting as level rarities.");
 
             // Enchanted Knife Configs
-            configSpawnKnifeOnGround = Config.Bind("Enchanted Knife", "Spawn Knife on Ground", false, "Set to false to disable spawning enchanted knives as scrap. This means you can only get it from the Yuleman.");
-            configKnifeLevelRarities = Config.Bind("Enchanted Knife", "Level Rarities", "ExperimentationLevel:0, AssuranceLevel:0, VowLevel:0, OffenseLevel:0, AdamanceLevel:0, MarchLevel:0, RendLevel:0, DineLevel:0, TitanLevel:0, ArtificeLevel:0, EmbrionLevel:0, Modded:0", "Rarities for each level. See default for formatting.");
-            configKnifeCustomLevelRarities = Config.Bind("Enchanted Knife", "Custom Level Rarities", "", "Rarities for modded levels. Same formatting as level rarities.");
+            //configSpawnKnifeOnGround = Config.Bind("Enchanted Knife", "Spawn Knife on Ground", false, "Set to false to disable spawning enchanted knives as scrap. This means you can only get it from the Yuleman.");
+            //configKnifeLevelRarities = Config.Bind("Enchanted Knife", "Level Rarities", "ExperimentationLevel:0, AssuranceLevel:0, VowLevel:0, OffenseLevel:0, AdamanceLevel:0, MarchLevel:0, RendLevel:0, DineLevel:0, TitanLevel:0, ArtificeLevel:0, EmbrionLevel:0, Modded:0", "Rarities for each level. See default for formatting.");
+            //configKnifeCustomLevelRarities = Config.Bind("Enchanted Knife", "Custom Level Rarities", "", "Rarities for modded levels. Same formatting as level rarities.");
             configKnifeMinValue = Config.Bind("Enchanted Knife", "Min Value", 100, "Minimum scrap value of enchanted knife.");
             configKnifeMaxValue = Config.Bind("Enchanted Knife", "Max Value", 200, "Maximum scrap value of enchanted knife.");
 
@@ -98,11 +98,12 @@ namespace SCP4666
 
             Knife.minValue = configKnifeMinValue.Value;
             Knife.maxValue = configKnifeMaxValue.Value;
-            Knife.itemSpawnsOnGround = configSpawnKnifeOnGround.Value;
+            //Knife.itemSpawnsOnGround = configSpawnKnifeOnGround.Value;
 
             LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Knife.spawnPrefab);
             Utilities.FixMixerGroups(Knife.spawnPrefab);
-            LethalLib.Modules.Items.RegisterScrap(Knife, GetLevelRarities(configKnifeLevelRarities.Value), GetCustomLevelRarities(configKnifeCustomLevelRarities.Value));
+            //LethalLib.Modules.Items.RegisterScrap(Knife, GetLevelRarities(configKnifeLevelRarities.Value), GetCustomLevelRarities(configKnifeCustomLevelRarities.Value));
+            LethalLib.Modules.Items.RegisterScrap(Knife);
 
             Item Rune = ModAssets.LoadAsset<Item>("Assets/ModAssets/YulemanKnifeRuneItem.asset");
             if (Rune == null) { LoggerInstance.LogError("Error: Couldnt get YulemanKnifeRuneItem from assets"); return; }

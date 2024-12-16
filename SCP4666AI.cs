@@ -1,18 +1,12 @@
 ﻿using BepInEx.Logging;
 using GameNetcodeStuff;
-using HandyCollections.Heap;
-using HarmonyLib;
 using SCP4666.YulemanKnife;
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
-using UnityEngine.AI;
-using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using static SCP4666.Plugin;
 
 namespace SCP4666
@@ -65,7 +59,7 @@ namespace SCP4666
         int maxPresentCount = 5;
         float teleportCooldown = 10f;
         float knifeThrowCooldown = 10f;
-        float knifeReturnCooldown = 2f;
+        float knifeReturnCooldown = 3.5f;
         float knifeThrowMinDistance = 5f;
         float knifeThrowMaxDistance = 15f;
         float teleportDistance = 15f;
@@ -73,6 +67,7 @@ namespace SCP4666
         int sliceDamage = 25;
         int slapDamage = 10;
         int hitAmountToDropPlayer = 5;
+        bool makeScreenBlackAbduct = true;
 
         public enum State
         {
@@ -109,13 +104,13 @@ namespace SCP4666
 
             if (IsServerOrHost)
             {
-                // TODO: Spawn presents
                 SetEnemyOutsideClientRpc(true);
+                int num = UnityEngine.Random.Range(minPresentCount, maxPresentCount + 1);
+                SpawnPresents(num);
             }
 
             mainEntrancePosition = RoundManager.FindMainEntrancePosition();
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(false, true);
-
         }
 
         public override void OnNetworkSpawn()
@@ -135,6 +130,20 @@ namespace SCP4666
         {
             base.OnNetworkDespawn();
             DropPlayer();
+            Instance = null;
+        }
+
+        public void SpawnPresents(int amount)
+        {
+            System.Random random = new System.Random(StartOfRound.Instance.randomMapSeed + thisEnemyIndex);
+
+            for (int i = 0; i < amount; i++)
+            {
+                Item giftItem = StartOfRound.Instance.allItemsList.itemsList.Where(x => x.name == "GiftBox").FirstOrDefault();
+                Vector3 pos = RoundManager.Instance.GetRandomPositionInRadius(transform.position, 1, 3, random);
+                GiftBoxItem gift = GameObject.Instantiate(giftItem.spawnPrefab, pos, Quaternion.identity).GetComponentInChildren<GiftBoxItem>();
+                gift.NetworkObject.Spawn();
+            }
         }
 
         public override void Update()
@@ -418,8 +427,8 @@ namespace SCP4666
                     FreezePlayer(localPlayer, false);
                     localPlayerHasSeenYuleman = false;
                 }
-                
-                // TODO: Unmuffle player voice
+
+                playerInSack.voiceMuffledByEnemy = false;
                 MakePlayerInvisible(playerInSack, false);
                 timesHitWhileAbducting = 0;
                 timeSinceGrabPlayer = 0f;
@@ -690,7 +699,7 @@ namespace SCP4666
             }
 
             MakePlayerInvisible(playerInSack, true);
-            // TODO: Muffle player voice
+            playerInSack.voiceMuffledByEnemy = true;
         }
 
         public void FinishStartAnimation()
