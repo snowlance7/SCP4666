@@ -44,6 +44,7 @@ namespace SCP4666
             base.ItemActivate(used, buttonDown);
             if (buttonDown)
             {
+                if (respawnType != RespawnType.ActivatedTeamWipe) { return; }
                 activated = true;
                 ScanNode.subText = "ACTIVATED";
             }

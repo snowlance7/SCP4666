@@ -7,6 +7,7 @@ using System.Linq;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
+using UnityEngine.AI;
 using static SCP4666.Plugin;
 
 namespace SCP4666
@@ -375,13 +376,13 @@ namespace SCP4666
             teleporting = false;
         }
 
-        bool GetTeleportNode()
+        bool GetTeleportNode() // TODO: Use getrandomnavmeshpositioninradius instead of ai nodes
         {
             targetNode = null;
-
             GameObject[] aiNodes = targetPlayer.isInsideFactory ? RoundManager.Instance.insideAINodes : RoundManager.Instance.outsideAINodes; // TODO: Test this
 
             float closestDistance = Vector3.Distance(targetPlayer.transform.position, transform.position);
+            //float closestDistance = CalculatePathDistance(RoundManager.Instance.GetNavMeshPosition(transform.position, RoundManager.Instance.navHit), RoundManager.Instance.GetNavMeshPosition(targetPlayer.transform.position, RoundManager.Instance.navHit));
 
             foreach (var node in aiNodes)
             {
@@ -389,14 +390,34 @@ namespace SCP4666
                 if (targetPlayer.HasLineOfSightToPosition(node.transform.position + Vector3.up * 0.25f, 68f, 60, 1f) || targetPlayer.HasLineOfSightToPosition(node.transform.position + Vector3.up * 1.6f, 68f, 60, 1f)) { continue; }
 
                 float distance = Vector3.Distance(node.transform.position, targetPlayer.transform.position);
+                //float distance = CalculatePathDistance(RoundManager.Instance.GetNavMeshPosition(node.transform.position, RoundManager.Instance.navHit), RoundManager.Instance.GetNavMeshPosition(targetPlayer.transform.position, RoundManager.Instance.navHit));
                 if (distance < closestDistance)
                 {
-                    targetNode = node.transform;
                     closestDistance = distance;
+                    targetNode = node.transform;
                 }
             }
 
             return targetNode != null;
+        }
+
+        float CalculatePathDistance(Vector3 start, Vector3 end)
+        {
+            NavMeshPath path = new NavMeshPath();
+            if (NavMesh.CalculatePath(start, end, NavMesh.AllAreas, path))
+            {
+                float distance = 0f;
+                for (int i = 1; i < path.corners.Length; i++)
+                {
+                    distance += Vector3.Distance(path.corners[i - 1], path.corners[i]);
+                }
+                return distance;
+            }
+            else
+            {
+                Debug.LogWarning("Path could not be calculated.");
+                return Mathf.Infinity; // Return large value if path not found
+            }
         }
 
         public bool TargetClosestPlayer() // TODO: Change this to just target each player in list

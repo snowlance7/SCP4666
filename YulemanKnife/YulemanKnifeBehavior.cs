@@ -215,7 +215,6 @@ namespace SCP4666.YulemanKnife
             logger.LogDebug("Stopping knife");
             EntitiesHitByKnife.Clear();
             grabbable = true;
-            EnableCollider(false);
 
             if (isThrown)
             {
