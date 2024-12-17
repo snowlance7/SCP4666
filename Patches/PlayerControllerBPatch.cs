@@ -35,8 +35,7 @@ namespace SCP4666.Patches
             {
                 __instance.voiceMuffledByEnemy = false;
                 MakePlayerInvisible(__instance, false);
-                __instance.playerRigidbody.isKinematic = true;
-                localPlayer.thisPlayerBody.localScale = new Vector3(1f, 1f, 1f);
+                __instance.thisPlayerBody.localScale = new Vector3(1f, 1f, 1f);
                 if (__instance != localPlayer) { return; }
                 MakePlayerScreenBlack(false);
                 FreezePlayer(localPlayer, false);

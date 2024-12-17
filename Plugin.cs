@@ -94,7 +94,7 @@ namespace SCP4666
             configMaxPresentCount = Config.Bind("SCP-4666", "Maximum Present Count", 5, "Maximum number of presents spawned by SCP-4666.");
             configTeleportCooldown = Config.Bind("SCP-4666", "Teleport Cooldown", 10f, "Cooldown (in seconds) between SCP-4666 teleport actions.");
             configKnifeThrowCooldown = Config.Bind("SCP-4666", "Knife Throw Cooldown", 10f, "Cooldown (in seconds) before SCP-4666 can throw the knife again.");
-            configKnifeReturnCooldown = Config.Bind("SCP-4666", "Knife Return Cooldown", 3.5f, "Cooldown (in seconds) before SCP-4666 can call the knife back.");
+            configKnifeReturnCooldown = Config.Bind("SCP-4666", "Knife Return Cooldown", 4f, "Cooldown (in seconds) before SCP-4666 can call the knife back.");
             configKnifeThrowMinDistance = Config.Bind("SCP-4666", "Knife Throw Minimum Distance", 5f, "Minimum distance SCP-4666 can throw the knife.");
             configKnifeThrowMaxDistance = Config.Bind("SCP-4666", "Knife Throw Maximum Distance", 20f, "Maximum distance SCP-4666 can throw the knife.");
             configTeleportDistance = Config.Bind("SCP-4666", "Teleport Distance", 15f, "Distance SCP-4666 can teleport.");
@@ -257,9 +257,8 @@ namespace SCP4666
         public static void FreezePlayer(PlayerControllerB player, bool value)
         {
             player.disableInteract = value;
-            //player.disableLookInput = value;
+            player.disableLookInput = value;
             player.disableMoveInput = value;
-            player.DropAllHeldItemsAndSync();
         }
 
         public static void MakePlayerInvisible(PlayerControllerB player, bool value)

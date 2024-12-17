@@ -1,15 +1,15 @@
 ManifestFileVersion: 0
-CRC: 2945806552
+CRC: 12993436
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: acc0b71ebe5aa903ee7888ed074861cd
+    Hash: 271371ece989b9d2bbb43ce6e322422c
   TypeTreeHash:
     serializedVersion: 2
-    Hash: 62fd887ed8035dcdd091507d145efd05
+    Hash: 514bb0b3f14214c6ec7c64883dca67ca
   IncrementalBuildHash:
     serializedVersion: 2
-    Hash: acc0b71ebe5aa903ee7888ed074861cd
+    Hash: 271371ece989b9d2bbb43ce6e322422c
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -71,7 +71,11 @@ ClassTypes:
 - Class: 114
   Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
 - Class: 114
+  Script: {fileID: 11500000, guid: 0e80ae96b3eb9177eea5c8f9dadbcda1, type: 3}
+- Class: 114
   Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: d3cecf05b78b173605122a700874719c, type: 3}
 - Class: 115
   Script: {instanceID: 0}
 - Class: 137
@@ -110,7 +114,9 @@ SerializeReferenceClassIdentifiers:
 Assets:
 - Assets/ModAssets/BlackScreenOverlay.prefab
 - Assets/ModAssets/SCP4666Enemy.asset
+- Assets/ModAssets/Bestiary/SCP4666TK.asset
 - Assets/ModAssets/YulemanKnifeItem.asset
 - Assets/ModAssets/YulemanKnifeRuneItem.asset
 - Assets/ModAssets/ChildSackItem.asset
+- Assets/ModAssets/Bestiary/SCP4666TN.asset
 Dependencies: []

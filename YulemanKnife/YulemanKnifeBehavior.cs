@@ -31,12 +31,13 @@ namespace SCP4666.YulemanKnife
         public YulemanKnifeRuneBehavior? RuneScript = null!;
 
         // Constants
-        Vector3 PositionOffsetStab = new Vector3(-0.2f, 0.26f, -0.02f);
-        Vector3 PositionOffsetThrow = new Vector3(0.18f, 0.035f, -0.08f);
-        Vector3 RotationOffsetStab = new Vector3(-30, -90, 90);
-        Vector3 RotationOffsetThrow = new Vector3(30, 100, -90);
+        readonly Vector3 PositionOffsetStab = new Vector3(-0.2f, 0.26f, -0.02f);
+        readonly Vector3 PositionOffsetThrow = new Vector3(0.18f, 0.035f, -0.08f);
+        readonly Vector3 RotationOffsetStab = new Vector3(-30, -90, 90);
+        readonly Vector3 RotationOffsetThrow = new Vector3(30, 100, -90);
         const int knifeMask = 1084754248;
         const int defaultExcludeMask = -2621449;
+        const float maxThrowDistance = 400f;
 
         // Variables
         bool isCharged;
@@ -53,9 +54,8 @@ namespace SCP4666.YulemanKnife
         Vector3 postThrowPosition;
         private bool returningToYuleman;
         public bool isThrown;
-        public bool stuck;
+        public bool stuckInWall;
         bool canFall = true;
-        float maxThrowDistance = 400f;
 
         // Config Variables
         float chargeTime = 1f;
@@ -79,15 +79,11 @@ namespace SCP4666.YulemanKnife
                 canFall = false;
                 ScanNode.enabled = false;
             }
-
-            if (!IsServerOrHost) { return; }
-            maxThrowDistance = Mathf.Max(localPlayer.gameplayCamera.farClipPlane, 400);
-            SetMaxThrowDistanceClientRpc(maxThrowDistance);
         }
 
         public override void Update()
         {
-            if (!isThrown && !stuck && !returningToPlayer && !returningToYuleman && canFall) { base.Update(); }
+            if (!isThrown && !stuckInWall && !returningToPlayer && !returningToYuleman && canFall) { base.Update(); }
             else
             {
                 fallTime = 1f;
@@ -145,13 +141,15 @@ namespace SCP4666.YulemanKnife
 
                 if (Physics.Raycast(transform.position, nextPosition - transform.position, throwForce * Time.fixedDeltaTime, StartOfRound.Instance.collidersAndRoomMask)) // Detect wall
                 {
+                    logger.LogDebug("Knife hit wall, stopping");
                     isThrown = false;
                     StopKnife(true);
                 }
                 else if (Vector3.Distance(startThrowPosition, postThrowPosition) >= maxThrowDistance)
                 {
+                    logger.LogDebug("Knife reached max distance, falling to ground");
                     isThrown = false;
-                    StopKnife(false);
+                    StopKnife();
                 }
                 else
                 {
@@ -160,17 +158,17 @@ namespace SCP4666.YulemanKnife
             }
         }
 
-        bool GetWallPosition()
+        Vector3 GetKnifeEndPoint()
         {
-            if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, maxThrowDistance, StartOfRound.Instance.collidersAndRoomMask))
+            Ray ray = new Ray(transform.position, transform.forward);
+            if (Physics.Raycast(ray, out RaycastHit hit, maxThrowDistance, StartOfRound.Instance.collidersAndRoomMask))
             {
                 float offset = Vector3.Distance(KnifeTip.position, transform.position);
-                postThrowPosition = hit.point - transform.forward * offset;
-                return true;
+                return hit.point - transform.forward * offset;
             }
 
             logger.LogDebug("Couldnt find wall");
-            return false;
+            return ray.GetPoint(maxThrowDistance);
         }
 
         public void OnTriggerEnter(Collider other) // Synced
@@ -205,26 +203,30 @@ namespace SCP4666.YulemanKnife
             isHeld = false;
             isHeldByEnemy = false;
             transform.rotation = Quaternion.LookRotation(throwDirection, KnifeTip.up);
-            startThrowPosition = transform.position;
             EnableCollider(true);
-            if (!GetWallPosition())
-            {
-                postThrowPosition = transform.position + throwDirection * maxThrowDistance;
-            }
+            startThrowPosition = transform.position;
+            postThrowPosition = GetKnifeEndPoint();
             isThrown = true;
             canFall = false;
         }
 
-        void StopKnife(bool hitWall)
+        void StopKnife(bool hitWall = false)
         {
             logger.LogDebug("Stopping knife");
-            isThrown = false;
             EntitiesHitByKnife.Clear();
-            transform.position = postThrowPosition;
             grabbable = true;
+            EnableCollider(false);
 
-            stuck = hitWall;
-            if (!stuck)
+            if (isThrown)
+            {
+                isThrown = false;
+                return;
+            }
+
+            transform.position = postThrowPosition;
+
+            stuckInWall = hitWall;
+            if (!stuckInWall)
             {
                 canFall = true;
                 FallToGround();
@@ -456,8 +458,9 @@ namespace SCP4666.YulemanKnife
         {
             if (previousPlayerHeldBy != null)
             {
+                StopKnife();
                 canFall = false;
-                stuck = false;
+                stuckInWall = false;
                 postThrowPosition = transform.position;
                 returningToPlayer = true;
             }
@@ -467,8 +470,9 @@ namespace SCP4666.YulemanKnife
         {
             if (SCP4666AI.Instance != null)
             {
+                StopKnife();
                 canFall = false;
-                stuck = false;
+                stuckInWall = false;
                 postThrowPosition = transform.position;
                 returningToYuleman = true;
             }
@@ -500,8 +504,8 @@ namespace SCP4666.YulemanKnife
         {
             isThrown = false;
             canFall = true;
-            if (stuck) { KnifeAudio.PlayOneShot(KnifeWallPullSFX); }
-            stuck = false;
+            if (stuckInWall) { KnifeAudio.PlayOneShot(KnifeWallPullSFX); }
+            stuckInWall = false;
             EntitiesHitByKnife.Clear();
             EnableCollider(false);
             ScanNode.enabled = true;
@@ -540,12 +544,6 @@ namespace SCP4666.YulemanKnife
                 Vector3 throwDirection = player.playerEye.transform.forward;
                 ThrowKnife(throwDirection);
             }
-        }
-
-        [ClientRpc]
-        public void SetMaxThrowDistanceClientRpc(float value)
-        {
-            maxThrowDistance = value;
         }
 
         [ServerRpc(RequireOwnership = false)]
