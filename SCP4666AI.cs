@@ -18,32 +18,37 @@ namespace SCP4666
         public static SCP4666AI? Instance { get; private set; }
 
 #pragma warning disable 0649
-        public NetworkAnimator networkAnimator = null!;
-        public Transform RightHandTransform = null!;
-        public Transform ChildSackTransform = null!;
-        public GameObject KnifeMeshObj = null!;
-        public YulemanKnifeBehavior? KnifeScript = null!;
-        public GameObject KnifePrefab = null!;
-        public GameObject ChildSackPrefab = null!;
-        public AudioClip FootstepSFX = null!;
-        public AudioClip TeleportSFX = null!;
-        public AudioClip LaughSFX = null!;
-        public AudioClip RoarSFX = null!;
+        public NetworkAnimator networkAnimator;
+        public Transform RightHandTransform;
+        public Transform ChildSackTransform;
+        public GameObject KnifeMeshObj;
+        public YulemanKnifeBehavior? KnifeScript;
+        public GameObject KnifePrefab;
+        public GameObject ChildSackPrefab;
+        public AudioClip FootstepSFX;
+        public AudioClip TeleportSFX;
+        public AudioClip LaughSFX;
+        public AudioClip RoarSFX;
+        public GameObject YulemanMesh;
+        public Transform turnCompass;
 #pragma warning restore 0649
 
         Vector3 mainEntranceOutsidePosition;
         Vector3 mainEntrancePosition;
         Vector3 escapePosition;
 
+        PlayerControllerB? playerStart;
         List<PlayerControllerB> TargetPlayers = [];
-        PlayerControllerB? playerInSack = null;
+        PlayerControllerB? playerInSack;
         PlayerControllerB? grabbingPlayer;
-        bool localPlayerHasSeenYuleman = false;
+        bool localPlayerHasSeenYuleman;
+        bool spawnedAndVisible;
 
         float timeSinceDamagePlayer;
         float timeSinceTeleport;
         float timeSinceKnifeThrown;
         float timeSinceGrabPlayer;
+        float timeSinceSyncedAIInterval;
 
         bool teleporting;
 
@@ -54,7 +59,7 @@ namespace SCP4666
         int timesHitWhileAbducting;
 
         // Constants
-        readonly Vector3 insideScale = new Vector3(1.7f, 1.7f, 1.7f);
+        readonly Vector3 insideScale = new Vector3(1.5f, 1.5f, 1.5f);
         readonly Vector3 outsideScale = new Vector3(2f, 2f, 2f);
 
         // Config Values
@@ -119,21 +124,22 @@ namespace SCP4666
 
             currentBehaviourStateIndex = (int)State.Spawning;
 
-            if (IsServerOrHost)
-            {
-                SetEnemyOutsideClientRpc(true);
-                int num = UnityEngine.Random.Range(minPresentCount, maxPresentCount + 1);
-                SpawnPresents(num);
-            }
+            SetEnemyOutside(true);
 
             mainEntrancePosition = RoundManager.FindMainEntrancePosition();
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(false, true);
+
+            if (IsServerOrHost)
+            {
+                int num = UnityEngine.Random.Range(minPresentCount, maxPresentCount + 1);
+                SpawnPresents(num);
+            }
         }
 
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
-            if (Instance != null)
+            if (Instance != null && Instance != this)
             {
                 logger.LogDebug("There is already a SCP-4666 in the scene. Removing this one.");
                 if (!IsServerOrHost) { return; }
@@ -142,6 +148,15 @@ namespace SCP4666
             }
             Instance = this;
             logger.LogDebug("Finished spawning SCP-4666");
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            base.OnNetworkDespawn();
+            if (Instance == this)
+            {
+                Instance = null;
+            }
         }
 
         public void SpawnPresents(int amount)
@@ -161,7 +176,7 @@ namespace SCP4666
         {
             base.Update();
 
-            if (isEnemyDead || StartOfRound.Instance.allPlayersDead)
+            if (isEnemyDead || StartOfRound.Instance.allPlayersDead || !spawnedAndVisible)
             {
                 return;
             };
@@ -170,8 +185,21 @@ namespace SCP4666
             if (!teleporting) { timeSinceTeleport += Time.deltaTime; }
             timeSinceKnifeThrown += Time.deltaTime;
             timeSinceGrabPlayer += Time.deltaTime;
+            timeSinceSyncedAIInterval += Time.deltaTime;
 
-            if (localPlayer.HasLineOfSightToPosition(transform.position, 30f, 20) && localPlayer != playerInSack)
+            if (timeSinceSyncedAIInterval > AIIntervalTime)
+            {
+                timeSinceSyncedAIInterval = 0f;
+                DoSyncedAIInterval();
+            }
+
+            if (currentBehaviourStateIndex == (int)State.Spawning && playerStart != null)
+            {
+                turnCompass.LookAt(playerStart.gameplayCamera.transform.position);
+                transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(new Vector3(0f, turnCompass.eulerAngles.y - 90, 0f)), 10f * Time.deltaTime); // TODO: Test this
+            }
+
+            if (localPlayer.HasLineOfSightToPosition(transform.position) && localPlayer != playerInSack)
             {
                 localPlayer.IncreaseFearLevelOverTime(0.1f, 0.5f);
 
@@ -201,6 +229,12 @@ namespace SCP4666
             }
         }
 
+        public void DoSyncedAIInterval()
+        {
+            if (currentBehaviourStateIndex != (int)State.Spawning) { return; }
+            playerStart = GetClosestPlayer(false, true);
+        }
+
         public override void DoAIInterval()
         {
             base.DoAIInterval();
@@ -210,6 +244,16 @@ namespace SCP4666
                 logger.LogDebug("Not doing ai interval");
                 return;
             };
+
+            if (!spawnedAndVisible)
+            {
+                if (!InLineOfSight())
+                {
+                    spawnedAndVisible = true;
+                    BecomeVisibleClientRpc();
+                }
+                return;
+            }
 
             switch (currentBehaviourStateIndex)
             {
@@ -420,6 +464,17 @@ namespace SCP4666
             }
         }
 
+        bool InLineOfSight()
+        {
+            foreach (var player in StartOfRound.Instance.allPlayerScripts)
+            {
+                if (!PlayerIsTargetable(player)) { continue; }
+                if (player.HasLineOfSightToPosition(transform.position)) { return true; }
+            }
+
+            return false;
+        }
+
         public bool TargetClosestPlayer() // TODO: Change this to just target each player in list
         {
             if (isAngry)
@@ -457,6 +512,7 @@ namespace SCP4666
         {
             if (playerInSack != null)
             {
+                logger.LogDebug($"Dropping {playerInSack.playerUsername} from sack");
                 if (localPlayer == playerInSack)
                 {
                     MakePlayerScreenBlack(false);
@@ -476,6 +532,7 @@ namespace SCP4666
 
             if (grabbingPlayer != null)
             {
+                logger.LogDebug($"Dropping grabbed player {grabbingPlayer.playerUsername}");
                 if (localPlayer == playerInSack)
                 {
                     FreezePlayer(localPlayer, false);
@@ -541,6 +598,7 @@ namespace SCP4666
             if (playerInSack != null || grabbingPlayer != null)
             {
                 timesHitWhileAbducting++;
+                logger.LogDebug($"Yuleman hit {timesHitWhileAbducting} times");
                 if (timesHitWhileAbducting >= hitAmountToDropPlayer)
                 {
                     DropPlayer();
@@ -553,11 +611,11 @@ namespace SCP4666
         {
             base.HitFromExplosion(distance);
 
-            DropPlayer();
+            if (inSpecialAnimation) { return; }
 
             if (distance < 2)
             {
-                HitEnemy(10);
+                HitEnemy(9);
             }
             else if (distance < 3)
             {
@@ -606,7 +664,7 @@ namespace SCP4666
         public override void CancelSpecialAnimationWithPlayer()
         {
             base.CancelSpecialAnimationWithPlayer();
-
+            DropPlayer();
         }
 
         #endregion
@@ -664,6 +722,7 @@ namespace SCP4666
                 return;
             }
 
+            inSpecialAnimation = false;
             callingKnifeBack = false;
             GrabKnife();
         }
@@ -721,6 +780,7 @@ namespace SCP4666
         public void GrabPlayer()
         {
             logger.LogDebug("GrabPlayer() called");
+            if (targetPlayer == null) { logger.LogError("TargetPlayer is null, cant grab player"); return; }
             inSpecialAnimation = true;
             grabbingPlayer = targetPlayer;
             grabbingPlayer.transform.SetParent(RightHandTransform);
@@ -747,6 +807,7 @@ namespace SCP4666
 
             MakePlayerInvisible(playerInSack, true);
             playerInSack.voiceMuffledByEnemy = true;
+            logger.LogDebug(playerInSack.playerUsername + " put in yulemans sack");
         }
 
         public void FinishStartAnimation()
@@ -754,12 +815,20 @@ namespace SCP4666
             if (IsServerOrHost)
             {
                 SwitchToBehaviourStateCustom(State.Chasing);
+                inSpecialAnimation = false;
             }
         }
 
         #endregion
 
         // RPC's
+
+        [ClientRpc]
+        public void BecomeVisibleClientRpc()
+        {
+            spawnedAndVisible = true;
+            YulemanMesh.SetActive(true);
+        }
 
         [ServerRpc(RequireOwnership = false)]
         public void ChangePlayerSizeServerRpc(ulong clientId, float size)

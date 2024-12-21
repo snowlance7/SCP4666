@@ -53,9 +53,8 @@ namespace SCP4666
         public static ConfigEntry<bool> configMakeScreenBlackAbduct;
 
         // Enchanted Knife Configs
-        //public static ConfigEntry<bool> configSpawnKnifeOnGround;
-        //public static ConfigEntry<string> configKnifeLevelRarities;
-        //public static ConfigEntry<string> configKnifeCustomLevelRarities;
+        public static ConfigEntry<string> configKnifeLevelRarities;
+        public static ConfigEntry<string> configKnifeCustomLevelRarities;
         public static ConfigEntry<int> configKnifeMinValue;
         public static ConfigEntry<int> configKnifeMaxValue;
 
@@ -67,7 +66,7 @@ namespace SCP4666
         // Sack Configs
         public static ConfigEntry<int> configSackMinValue;
         public static ConfigEntry<int> configSackMaxValue;
-        public static ConfigEntry<ChildSackBehavior.RespawnType> configSackRespawnType;
+        public static ConfigEntry<bool> configRandomSack;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         private void Awake()
@@ -105,7 +104,6 @@ namespace SCP4666
             configMakeScreenBlackAbduct = Config.Bind("SCP-4666", "Make Screen Black on Abduction", true, "Set to true to make the player's screen black during abduction.");
 
             // Enchanted Knife Configs
-            //configSpawnKnifeOnGround = Config.Bind("Enchanted Knife", "Spawn Knife on Ground", false, "Set to false to disable spawning enchanted knives as scrap. This means you can only get it from the Yuleman.");
             //configKnifeLevelRarities = Config.Bind("Enchanted Knife", "Level Rarities", "ExperimentationLevel:0, AssuranceLevel:0, VowLevel:0, OffenseLevel:0, AdamanceLevel:0, MarchLevel:0, RendLevel:0, DineLevel:0, TitanLevel:0, ArtificeLevel:0, EmbrionLevel:0, Modded:0", "Rarities for each level. See default for formatting.");
             //configKnifeCustomLevelRarities = Config.Bind("Enchanted Knife", "Custom Level Rarities", "", "Rarities for modded levels. Same formatting as level rarities.");
             configKnifeMinValue = Config.Bind("Enchanted Knife", "Min Value", 100, "Minimum scrap value of enchanted knife.");
@@ -119,7 +117,7 @@ namespace SCP4666
             // Sack Configs
             configSackMinValue = Config.Bind("Child Sack", "Min Value", 100, "Minimum scrap value of the sack the yuleman drops.");
             configSackMaxValue = Config.Bind("Child Sack", "Max Value", 200, "Maximum scrap value of sack the yuleman drops.");
-            configSackRespawnType = Config.Bind("Child Sack", "Respawn Type", ChildSackBehavior.RespawnType.TeamWipe, "How the child sack will function. 1. Manual: Will revive all dead players when used. 2. TeamWipe: Will revive dead players when left on the ship and all players are dead. 3. ActivatedTeamWipe: Same as TeamWipe except you need to activate it first for that round. 4. Random: For each dead player, there is a 50/50 chance they will revive as themselves or a present. 1 player revive is guranteed.");
+            configRandomSack = Config.Bind("Child Sack", "Random sack", false, "If set to true, instead of reviving all players on team wipe, it will have a 50/50 chance to either revive a player or spawn a present, with 1 player revive guranteed.");
 
             // Loading Assets
             string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);

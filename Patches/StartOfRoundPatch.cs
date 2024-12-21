@@ -34,28 +34,10 @@ namespace SCP4666.Patches
                 ChildSackBehavior sack = GameObject.FindObjectsOfType<ChildSackBehavior>().Where(x => x.isInShipRoom).FirstOrDefault();
                 if (sack == null) { return true; }
 
-                switch (sack.respawnType)
-                {
-                    case ChildSackBehavior.RespawnType.Manual:
-                        break;
-                    case ChildSackBehavior.RespawnType.TeamWipe:
-                        sack.Activate();
-                        return false;
-                    case ChildSackBehavior.RespawnType.ActivatedTeamWipe:
-                        if (sack.activated)
-                        {
-                            sack.Activate();
-                            return false;
-                        }
-                        break;
-                    case ChildSackBehavior.RespawnType.Random:
-                        sack.Activate();
-                        return false;
-                    default:
-                        break;
-                }
+                StartOfRound.Instance.allPlayersDead = false;
+                sack.Activate();
 
-                return true;
+                return false;
             }
             catch (Exception e)
             {

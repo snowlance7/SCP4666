@@ -10,94 +10,241 @@ namespace SCP4666
 {
     public class ChildSackBehavior : PhysicsProp
     {
-        public ScanNodeProperties ScanNode = null!;
-
-        public enum RespawnType
-        {
-            Manual,
-            TeamWipe,
-            ActivatedTeamWipe,
-            Random
-        }
-
-        public RespawnType respawnType = RespawnType.TeamWipe;
-        public bool activated;
+        System.Random random;
+        bool usingRandomMode = false;
 
         public override void Start()
         {
             base.Start();
-            respawnType = configSackRespawnType.Value;
-        }
-
-        public override void Update()
-        {
-            base.Update();
-
-            if (activated && StartOfRound.Instance.inShipPhase)
-            {
-                NetworkObject.Despawn();
-            }
-        }
-
-        public override void ItemActivate(bool used, bool buttonDown = true)
-        {
-            base.ItemActivate(used, buttonDown);
-            if (buttonDown)
-            {
-                if (respawnType != RespawnType.ActivatedTeamWipe) { return; }
-                activated = true;
-                ScanNode.subText = "ACTIVATED";
-            }
+            usingRandomMode = configRandomSack.Value;
+            if (!usingRandomMode) { return; }
+            random = new System.Random(scrapValue);
         }
 
         public void Activate()
         {
-            if (!IsServerOrHost) { return; }
-            if (playerHeldBy != null) { playerHeldBy.DropAllHeldItemsAndSync(); }
+            if (playerHeldBy != null && localPlayer == playerHeldBy) { playerHeldBy.DropAllHeldItemsAndSync(); }
 
-            if (respawnType == RespawnType.Random)
+            if (usingRandomMode)
             {
-                // TODO: Do random spawning
+                int playersRespawned = 0;
+                foreach (var player in StartOfRound.Instance.allPlayerScripts)
+                {
+                    if (!player.isPlayerDead) { continue; }
+
+                    if (playersRespawned == 0)
+                    {
+                        RevivePlayer(player);
+                        continue;
+                    }
+
+                    int num = random.Next(0, 2);
+                    if (num == 0)
+                    {
+                        RevivePlayer(player);
+                        playersRespawned++;
+                    }
+                    else
+                    {
+                        SpawnPresent();
+                    }
+                }
+
+                return;
             }
 
-            StartCoroutine(ReviveAndDespawnAfterDelay(2f));
+            StartOfRound.Instance.ReviveDeadPlayers();
         }
 
-        IEnumerator ReviveAndDespawnAfterDelay(float delay)
+        public void RevivePlayer(PlayerControllerB player)
         {
-            yield return new WaitForSeconds(delay);
+            PlayerControllerB[] allPlayerScripts = StartOfRound.Instance.allPlayerScripts;
+            int i = -1;
 
-            foreach (var player in StartOfRound.Instance.allPlayerScripts.Where(x => x.isPlayerDead))
+            StartOfRound.Instance.allPlayersDead = false;
+            for (int _i = 0; _i < allPlayerScripts.Length; _i++)
             {
-                float size = UnityEngine.Random.Range(0.6f, 0.9f);
-                MakePlayerSmallClientRpc(player.actualClientId, size);
+                if (allPlayerScripts[_i] == player)
+                {
+                    i = _i;
+                    break;
+                }
             }
 
-            yield return new WaitForSeconds(1f);
+            if (i == -1)
+            {
+                LoggerInstance.LogError("Cant find player to revive");
+                return;
+            }
 
-            ReviveDeadPlayersClientRpc();
+            Debug.Log("Reviving players A");
+            allPlayerScripts[i].ResetPlayerBloodObjects(allPlayerScripts[i].isPlayerDead);
+            if (!allPlayerScripts[i].isPlayerDead && !allPlayerScripts[i].isPlayerControlled)
+            {
+                return;
+            }
+            allPlayerScripts[i].isClimbingLadder = false;
+            allPlayerScripts[i].clampLooking = false;
+            allPlayerScripts[i].inVehicleAnimation = false;
+            allPlayerScripts[i].disableMoveInput = false;
+            allPlayerScripts[i].ResetZAndXRotation();
+            allPlayerScripts[i].thisController.enabled = true;
+            allPlayerScripts[i].health = 100;
+            allPlayerScripts[i].hasBeenCriticallyInjured = false;
+            allPlayerScripts[i].disableLookInput = false;
+            allPlayerScripts[i].disableInteract = false;
+            Debug.Log("Reviving players B");
+            if (allPlayerScripts[i].isPlayerDead)
+            {
+                allPlayerScripts[i].isPlayerDead = false;
+                allPlayerScripts[i].isPlayerControlled = true;
+                allPlayerScripts[i].isInElevator = true;
+                allPlayerScripts[i].isInHangarShipRoom = true;
+                allPlayerScripts[i].isInsideFactory = false;
+                allPlayerScripts[i].parentedToElevatorLastFrame = false;
+                allPlayerScripts[i].overrideGameOverSpectatePivot = null;
+                StartOfRound.Instance.SetPlayerObjectExtrapolate(enable: false);
+                allPlayerScripts[i].TeleportPlayer(StartOfRound.Instance.GetPlayerSpawnPosition(i));
+                allPlayerScripts[i].setPositionOfDeadPlayer = false;
+                allPlayerScripts[i].DisablePlayerModel(StartOfRound.Instance.allPlayerObjects[i], enable: true, disableLocalArms: true);
+                allPlayerScripts[i].helmetLight.enabled = false;
+                Debug.Log("Reviving players C");
+                allPlayerScripts[i].Crouch(crouch: false);
+                allPlayerScripts[i].criticallyInjured = false;
+                if (allPlayerScripts[i].playerBodyAnimator != null)
+                {
+                    allPlayerScripts[i].playerBodyAnimator.SetBool("Limp", value: false);
+                }
+                allPlayerScripts[i].bleedingHeavily = false;
+                allPlayerScripts[i].activatingItem = false;
+                allPlayerScripts[i].twoHanded = false;
+                allPlayerScripts[i].inShockingMinigame = false;
+                allPlayerScripts[i].inSpecialInteractAnimation = false;
+                allPlayerScripts[i].freeRotationInInteractAnimation = false;
+                allPlayerScripts[i].disableSyncInAnimation = false;
+                allPlayerScripts[i].inAnimationWithEnemy = null;
+                allPlayerScripts[i].holdingWalkieTalkie = false;
+                allPlayerScripts[i].speakingToWalkieTalkie = false;
+                Debug.Log("Reviving players D");
+                allPlayerScripts[i].isSinking = false;
+                allPlayerScripts[i].isUnderwater = false;
+                allPlayerScripts[i].sinkingValue = 0f;
+                allPlayerScripts[i].statusEffectAudio.Stop();
+                allPlayerScripts[i].DisableJetpackControlsLocally();
+                allPlayerScripts[i].health = 100;
+                Debug.Log("Reviving players E");
+                allPlayerScripts[i].mapRadarDotAnimator.SetBool("dead", value: false);
+                allPlayerScripts[i].externalForceAutoFade = Vector3.zero;
+                if (allPlayerScripts[i].IsOwner)
+                {
+                    HUDManager.Instance.gasHelmetAnimator.SetBool("gasEmitting", value: false);
+                    allPlayerScripts[i].hasBegunSpectating = false;
+                    HUDManager.Instance.RemoveSpectateUI();
+                    HUDManager.Instance.gameOverAnimator.SetTrigger("revive");
+                    allPlayerScripts[i].hinderedMultiplier = 1f;
+                    allPlayerScripts[i].isMovementHindered = 0;
+                    allPlayerScripts[i].sourcesCausingSinking = 0;
+                    Debug.Log("Reviving players E2");
+                    allPlayerScripts[i].reverbPreset = StartOfRound.Instance.shipReverb;
+                }
+            }
+            Debug.Log("Reviving players F");
+            SoundManager.Instance.earsRingingTimer = 0f;
+            allPlayerScripts[i].voiceMuffledByEnemy = false;
+            SoundManager.Instance.playerVoicePitchTargets[i] = 1f;
+            SoundManager.Instance.SetPlayerPitch(1f, i);
+            if (allPlayerScripts[i].currentVoiceChatIngameSettings == null)
+            {
+                StartOfRound.Instance.RefreshPlayerVoicePlaybackObjects();
+            }
+            if (allPlayerScripts[i].currentVoiceChatIngameSettings != null)
+            {
+                if (allPlayerScripts[i].currentVoiceChatIngameSettings.voiceAudio == null)
+                {
+                    allPlayerScripts[i].currentVoiceChatIngameSettings.InitializeComponents();
+                }
+                if (allPlayerScripts[i].currentVoiceChatIngameSettings.voiceAudio == null)
+                {
+                    return;
+                }
+                allPlayerScripts[i].currentVoiceChatIngameSettings.voiceAudio.GetComponent<OccludeAudio>().overridingLowPass = false;
+            }
+            Debug.Log("Reviving players G");
 
-            NetworkObject.Despawn();
+            if (localPlayer == player)
+            {
+                player.bleedingHeavily = false;
+                player.criticallyInjured = false;
+                player.playerBodyAnimator.SetBool("Limp", value: false);
+                player.health = 100;
+                HUDManager.Instance.UpdateHealthUI(100, hurtPlayer: false);
+                player.spectatedPlayerScript = null;
+                HUDManager.Instance.audioListenerLowPass.enabled = false;
+                Debug.Log("Reviving players H");
+                StartOfRound.Instance.SetSpectateCameraToGameOverMode(enableGameOver: false, player);
+            }
+
+            /*RagdollGrabbableObject[] array = Object.FindObjectsOfType<RagdollGrabbableObject>();
+            for (int j = 0; j < array.Length; j++)
+            {
+                if (!array[j].isHeld)
+                {
+                    if (base.IsServer)
+                    {
+                        if (array[j].NetworkObject.IsSpawned)
+                        {
+                            array[j].NetworkObject.Despawn();
+                        }
+                        else
+                        {
+                            Object.Destroy(array[j].gameObject);
+                        }
+                    }
+                }
+                else if (array[j].isHeld && array[j].playerHeldBy != null)
+                {
+                    array[j].playerHeldBy.DropAllHeldItems();
+                }
+            }*/
+            DeadBodyInfo deadBody = Object.FindObjectsOfType<DeadBodyInfo>().Where(x => x.playerScript == player).FirstOrDefault();
+            if (deadBody != null)
+            {
+                if (deadBody.grabBodyObject.playerHeldBy != null)
+                {
+                    deadBody.grabBodyObject.playerHeldBy.DropAllHeldItems();
+                }
+
+                if (IsServerOrHost)
+                {
+                    deadBody.grabBodyObject.NetworkObject.Despawn();
+                }
+                else
+                {
+                    Object.Destroy(deadBody.grabBodyObject.gameObject);
+                }
+
+                Object.Destroy(deadBody.gameObject);
+            }
+            /*DeadBodyInfo[] array2 = Object.FindObjectsOfType<DeadBodyInfo>();
+            for (int k = 0; k < array2.Length; k++)
+            {
+                Object.Destroy(array2[k].gameObject);
+            }*/
+            StartOfRound.Instance.livingPlayers++;
+            StartOfRound.Instance.allPlayersDead = false;
+            if (player == localPlayer)
+            {
+                StartOfRound.Instance.UpdatePlayerVoiceEffects();
+            }
+            StartOfRound.Instance.ResetMiscValues();
         }
 
         public void SpawnPresent()
         {
+            if (!IsServerOrHost) { return; }
             Item giftItem = StartOfRound.Instance.allItemsList.itemsList.Where(x => x.name == "GiftBox").FirstOrDefault();
             GiftBoxItem gift = GameObject.Instantiate(giftItem.spawnPrefab, transform.position, Quaternion.identity).GetComponentInChildren<GiftBoxItem>();
             gift.NetworkObject.Spawn();
-        }
-
-        [ClientRpc]
-        public void ReviveDeadPlayersClientRpc()
-        {
-            StartOfRound.Instance.ReviveDeadPlayers();
-        }
-
-        [ClientRpc]
-        public void MakePlayerSmallClientRpc(ulong clientId, float size)
-        {
-            PlayerControllerB player = PlayerFromId(clientId);
-            player.thisPlayerBody.localScale = new Vector3(size, size, size);
         }
     }
 }
