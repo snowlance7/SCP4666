@@ -67,6 +67,9 @@ namespace SCP4666
         public static ConfigEntry<int> configSackMinValue;
         public static ConfigEntry<int> configSackMaxValue;
         public static ConfigEntry<bool> configRandomSack;
+        public static ConfigEntry<bool> configMakePlayersChildOnRevive;
+        public static ConfigEntry<float> configChildMinSize;
+        public static ConfigEntry<float> configChildMaxSize;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         private void Awake()
@@ -118,6 +121,9 @@ namespace SCP4666
             configSackMinValue = Config.Bind("Child Sack", "Min Value", 100, "Minimum scrap value of the sack the yuleman drops.");
             configSackMaxValue = Config.Bind("Child Sack", "Max Value", 200, "Maximum scrap value of sack the yuleman drops.");
             configRandomSack = Config.Bind("Child Sack", "Random sack", false, "If set to true, instead of reviving all players on team wipe, it will have a 50/50 chance to either revive a player or spawn a present, with 1 player revive guranteed.");
+            configMakePlayersChildOnRevive = Config.Bind("Child Sack", "Make Players Child On Revive", true, "Should the players size be changed when being revived by the child sack?");
+            configChildMinSize = Config.Bind("Child Sack", "Child Min Size", 0.6f, "Min size to make the player when revived as a child. Default vanilla size of the player is 1.");
+            configChildMaxSize = Config.Bind("Child Sack", "Child Max Size", 0.9f, "Max size to make the player when revived as a child. Default vanilla size of the player is 1.");
 
             // Loading Assets
             string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);

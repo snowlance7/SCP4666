@@ -39,10 +39,11 @@ namespace SCP4666
 
         PlayerControllerB? playerStart;
         List<PlayerControllerB> TargetPlayers = [];
-        PlayerControllerB? playerInSack;
-        PlayerControllerB? grabbingPlayer;
         bool localPlayerHasSeenYuleman;
         bool spawnedAndVisible;
+
+        bool isGrabbingPlayer;
+        bool isPlayerInSack;
 
         float timeSinceDamagePlayer;
         float timeSinceTeleport;
@@ -199,7 +200,7 @@ namespace SCP4666
                 transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(new Vector3(0f, turnCompass.eulerAngles.y - 90, 0f)), 10f * Time.deltaTime); // TODO: Test this
             }
 
-            if (localPlayer.HasLineOfSightToPosition(transform.position) && localPlayer != playerInSack)
+            if (localPlayer.HasLineOfSightToPosition(transform.position) && localPlayer != inSpecialAnimationWithPlayer)
             {
                 localPlayer.IncreaseFearLevelOverTime(0.1f, 0.5f);
 
@@ -210,16 +211,16 @@ namespace SCP4666
                 }
             }
 
-            if (grabbingPlayer != null)
+            if (inSpecialAnimationWithPlayer != null && isGrabbingPlayer)
             {
-                grabbingPlayer.transform.position = RightHandTransform.position;
-                grabbingPlayer.takingFallDamage = false;
+                inSpecialAnimationWithPlayer.transform.position = RightHandTransform.position;
+                inSpecialAnimationWithPlayer.takingFallDamage = false;
             }
 
-            if (playerInSack != null)
+            if (inSpecialAnimationWithPlayer != null && isPlayerInSack)
             {
-                playerInSack.transform.position = ChildSackTransform.position;
-                playerInSack.takingFallDamage = false;
+                inSpecialAnimationWithPlayer.transform.position = ChildSackTransform.position;
+                inSpecialAnimationWithPlayer.takingFallDamage = false;
             }
 
             if (stunNormalizedTimer > 0f || inSpecialAnimation)
@@ -245,7 +246,7 @@ namespace SCP4666
                 return;
             };
 
-            if (!spawnedAndVisible)
+            /*if (!spawnedAndVisible)
             {
                 if (!InLineOfSight())
                 {
@@ -253,12 +254,22 @@ namespace SCP4666
                     BecomeVisibleClientRpc();
                 }
                 return;
-            }
+            }*/
 
             switch (currentBehaviourStateIndex)
             {
                 case (int)State.Spawning:
                     //agent.speed = 0f;
+
+                    if (!spawnedAndVisible)
+                    {
+                        if (!InLineOfSight())
+                        {
+                            spawnedAndVisible = true;
+                            BecomeVisibleClientRpc();
+                        }
+                        return;
+                    }
 
                     break;
 
@@ -420,7 +431,7 @@ namespace SCP4666
             teleporting = false;
         }
 
-        bool GetTeleportNode() // TODO: Use getrandomnavmeshpositioninradius instead of ai nodes
+        bool GetTeleportNode() // TODO: Use getrandomnavmeshpositioninradius instead of ai nodes?
         {
             targetNode = null;
             GameObject[] aiNodes = targetPlayer.isInsideFactory ? RoundManager.Instance.insideAINodes : RoundManager.Instance.outsideAINodes; // TODO: Test this
@@ -443,25 +454,6 @@ namespace SCP4666
             }
 
             return targetNode != null;
-        }
-
-        float CalculatePathDistance(Vector3 start, Vector3 end)
-        {
-            NavMeshPath path = new NavMeshPath();
-            if (NavMesh.CalculatePath(start, end, NavMesh.AllAreas, path))
-            {
-                float distance = 0f;
-                for (int i = 1; i < path.corners.Length; i++)
-                {
-                    distance += Vector3.Distance(path.corners[i - 1], path.corners[i]);
-                }
-                return distance;
-            }
-            else
-            {
-                Debug.LogWarning("Path could not be calculated.");
-                return Mathf.Infinity; // Return large value if path not found
-            }
         }
 
         bool InLineOfSight()
@@ -503,48 +495,40 @@ namespace SCP4666
                 }
             }
 
-            if (newPlayerToTarget != null && targetPlayer != newPlayerToTarget) { ChangeTargetPlayerClientRpc(newPlayerToTarget.actualClientId); }
+            //if (newPlayerToTarget != null && targetPlayer != newPlayerToTarget) { ChangeTargetPlayerClientRpc(newPlayerToTarget.actualClientId); }
             targetPlayer = newPlayerToTarget;
             return targetPlayer != null;
         }
 
         public void DropPlayer() // TODO: Needs to be synced with all clients
         {
-            if (playerInSack != null)
+            if (inSpecialAnimationWithPlayer != null)
             {
-                logger.LogDebug($"Dropping {playerInSack.playerUsername} from sack");
-                if (localPlayer == playerInSack)
+                if (isPlayerInSack)
+                {
+                    logger.LogDebug($"Dropping {inSpecialAnimationWithPlayer.playerUsername} from sack");
+
+                    inSpecialAnimationWithPlayer.voiceMuffledByEnemy = false;
+                    MakePlayerInvisible(inSpecialAnimationWithPlayer, false);
+                    creatureAnimator.SetBool("bagWalk", false);
+                }
+
+                if (localPlayer == inSpecialAnimationWithPlayer)
                 {
                     MakePlayerScreenBlack(false);
                     FreezePlayer(localPlayer, false);
                     localPlayerHasSeenYuleman = false;
                 }
-
-                playerInSack.voiceMuffledByEnemy = false;
-                MakePlayerInvisible(playerInSack, false);
-                timesHitWhileAbducting = 0;
-                timeSinceGrabPlayer = 0f;
-                creatureAnimator.SetBool("bagWalk", false);
-
-                playerInSack.transform.SetParent(null);
-                playerInSack = null;
+                
+                inSpecialAnimationWithPlayer.inAnimationWithEnemy = null;
+                inSpecialAnimationWithPlayer.transform.SetParent(null);
             }
 
-            if (grabbingPlayer != null)
-            {
-                logger.LogDebug($"Dropping grabbed player {grabbingPlayer.playerUsername}");
-                if (localPlayer == playerInSack)
-                {
-                    FreezePlayer(localPlayer, false);
-                    localPlayerHasSeenYuleman = false;
-                }
-
-                timesHitWhileAbducting = 0;
-                timeSinceGrabPlayer = 0f;
-
-                grabbingPlayer.transform.SetParent(null);
-                grabbingPlayer = null;
-            }
+            isGrabbingPlayer = false;
+            isPlayerInSack = false;
+            inSpecialAnimationWithPlayer = null;
+            timesHitWhileAbducting = 0;
+            timeSinceGrabPlayer = 0f;
         }
 
         #region Overrides
@@ -552,17 +536,16 @@ namespace SCP4666
         {
             base.DaytimeEnemyLeave();
             if (!IsServerOrHost || currentBehaviourStateIndex != (int)State.Abducting) { return; }
-            if (playerInSack != null)
+            if (isPlayerInSack)
             {
                 KillPlayerInSackClientRpc();
             }
             KillEnemyOnOwnerClient(true);
-
         }
 
         public override void KillEnemy(bool destroy = false) // Synced
         {
-            if (inSpecialAnimation) { return; }
+            //if (inSpecialAnimation) { return; }
             DropPlayer();
             if (IsServerOrHost && !daytimeEnemyLeaving)
             {
@@ -590,12 +573,11 @@ namespace SCP4666
 
             if (enemyHP <= 0)
             {
-                DropPlayer();
                 KillEnemyOnOwnerClient();
                 return;
             }
 
-            if (playerInSack != null || grabbingPlayer != null)
+            if (inSpecialAnimationWithPlayer != null)
             {
                 timesHitWhileAbducting++;
                 logger.LogDebug($"Yuleman hit {timesHitWhileAbducting} times");
@@ -632,10 +614,10 @@ namespace SCP4666
             base.OnCollideWithPlayer(other);
             PlayerControllerB player = MeetsStandardPlayerCollisionConditions(other);
             if (player == null) { return; }
-            if (playerInSack != null && playerInSack == player) { return; }
+            if (inSpecialAnimationWithPlayer != null && inSpecialAnimationWithPlayer == player) { return; }
             if (timeSinceDamagePlayer > 3f)
             {
-                if (player.isPlayerDead || inSpecialAnimation || isEnemyDead || player != targetPlayer) { return; }
+                if (player.isPlayerDead || inSpecialAnimation || isEnemyDead) { return; }
                 timeSinceDamagePlayer = 0f;
 
                 if (IsPlayerChild(player) && timeSinceGrabPlayer > 10f)
@@ -663,8 +645,8 @@ namespace SCP4666
 
         public override void CancelSpecialAnimationWithPlayer()
         {
-            base.CancelSpecialAnimationWithPlayer();
             DropPlayer();
+            base.CancelSpecialAnimationWithPlayer();
         }
 
         #endregion
@@ -780,34 +762,34 @@ namespace SCP4666
         public void GrabPlayer()
         {
             logger.LogDebug("GrabPlayer() called");
-            if (targetPlayer == null) { logger.LogError("TargetPlayer is null, cant grab player"); return; }
+            if (inSpecialAnimationWithPlayer == null) { logger.LogWarning("inSpecialAnimationWithPlayer is null in GrabPlayer()"); return; }
             inSpecialAnimation = true;
-            grabbingPlayer = targetPlayer;
-            grabbingPlayer.transform.SetParent(RightHandTransform);
+            inSpecialAnimationWithPlayer.transform.SetParent(RightHandTransform);
+            isGrabbingPlayer = true;
         }
 
         public void PutPlayerInSack()
         {
             logger.LogDebug("PutPlayerInSack() called");
             inSpecialAnimation = false;
-            if (grabbingPlayer == null) { logger.LogError("grabbingPlayer is null"); return; }
-            TargetPlayers.Remove(grabbingPlayer);
+            isGrabbingPlayer = false;
+            if (inSpecialAnimationWithPlayer == null) { logger.LogError("inSpecialAnimationWithPlayer is null in PutPlayerInSack()"); return; }
+            TargetPlayers.Remove(inSpecialAnimationWithPlayer);
 
-            playerInSack = grabbingPlayer;
-            grabbingPlayer = null;
-            playerInSack.transform.SetParent(ChildSackTransform);
+            inSpecialAnimationWithPlayer.transform.SetParent(ChildSackTransform);
+            isPlayerInSack = true;
 
             creatureVoice.PlayOneShot(LaughSFX);
             creatureAnimator.SetBool("bagWalk", true);
 
-            if (localPlayer == playerInSack)
+            if (localPlayer == inSpecialAnimationWithPlayer)
             {
                 MakePlayerScreenBlack(true);
             }
 
-            MakePlayerInvisible(playerInSack, true);
-            playerInSack.voiceMuffledByEnemy = true;
-            logger.LogDebug(playerInSack.playerUsername + " put in yulemans sack");
+            MakePlayerInvisible(inSpecialAnimationWithPlayer, true);
+            inSpecialAnimationWithPlayer.voiceMuffledByEnemy = true;
+            logger.LogDebug(inSpecialAnimationWithPlayer.playerUsername + " put in yulemans sack");
         }
 
         public void FinishStartAnimation()
@@ -857,10 +839,9 @@ namespace SCP4666
         [ClientRpc]
         public void KillPlayerInSackClientRpc()
         {
-            if (playerInSack == null) { logger.LogError("playerInSack is null"); return; }
-            PlayerControllerB player = playerInSack;
+            if (inSpecialAnimationWithPlayer == null) { logger.LogError("playerInSack is null in KillPlayerInSackClientRpc()"); return; }
+            PlayerControllerB player = inSpecialAnimationWithPlayer;
             DropPlayer();
-            if (localPlayer != player) { return; }
             localPlayer.KillPlayer(Vector3.zero, false);
         }
 
@@ -895,7 +876,8 @@ namespace SCP4666
         public void GrabPlayerClientRpc(ulong clientId)
         {
             inSpecialAnimation = true;
-            targetPlayer = PlayerFromId(clientId);
+            inSpecialAnimationWithPlayer = PlayerFromId(clientId);
+            inSpecialAnimationWithPlayer.inAnimationWithEnemy = this;
             TargetPlayers.Remove(targetPlayer);
             creatureAnimator.SetTrigger("grabPlayer");
         }
@@ -916,14 +898,6 @@ namespace SCP4666
                 TargetPlayers.Add(player);
                 logger.LogDebug($"Added {player.playerUsername} to targeted players");
             }
-        }
-
-        [ClientRpc]
-        public void ChangeTargetPlayerClientRpc(ulong clientId)
-        {
-            if (IsServerOrHost) { return; }
-            targetPlayer = PlayerFromId(clientId);
-            logger.LogDebug("Changed target player to " + targetPlayer.playerUsername);
         }
 
         [ClientRpc]

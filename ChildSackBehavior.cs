@@ -12,16 +12,25 @@ namespace SCP4666
     {
         System.Random random;
         bool usingRandomMode = false;
+        public static bool localPlayerSizeChangedFromSack;
+
+        // Configs
+        bool makePlayersChildOnRevive = true;
+        float minSize = 0.6f;
+        float maxSize = 1f;
 
         public override void Start()
         {
             base.Start();
             usingRandomMode = configRandomSack.Value;
+            makePlayersChildOnRevive = configMakePlayersChildOnRevive.Value;
+            minSize = configChildMinSize.Value;
+            maxSize = configChildMaxSize.Value;
             if (!usingRandomMode) { return; }
             random = new System.Random(scrapValue);
         }
 
-        public void Activate()
+        public void Activate() // TODO: Make sure this is synced to all clients
         {
             if (playerHeldBy != null && localPlayer == playerHeldBy) { playerHeldBy.DropAllHeldItemsAndSync(); }
 
@@ -146,6 +155,13 @@ namespace SCP4666
                     allPlayerScripts[i].sourcesCausingSinking = 0;
                     Debug.Log("Reviving players E2");
                     allPlayerScripts[i].reverbPreset = StartOfRound.Instance.shipReverb;
+                    
+                    if (makePlayersChildOnRevive)
+                    {
+                        localPlayerSizeChangedFromSack = true;
+                        float size = UnityEngine.Random.Range(minSize, maxSize);
+                        ChangePlayerSizeServerRpc(allPlayerScripts[i].actualClientId, size);
+                    }
                 }
             }
             Debug.Log("Reviving players F");
@@ -245,6 +261,20 @@ namespace SCP4666
             Item giftItem = StartOfRound.Instance.allItemsList.itemsList.Where(x => x.name == "GiftBox").FirstOrDefault();
             GiftBoxItem gift = GameObject.Instantiate(giftItem.spawnPrefab, transform.position, Quaternion.identity).GetComponentInChildren<GiftBoxItem>();
             gift.NetworkObject.Spawn();
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void ChangePlayerSizeServerRpc(ulong clientId, float size)
+        {
+            if (!IsServerOrHost) { return; }
+            ChangePlayerSizeClientRpc(clientId, size);
+        }
+
+        [ClientRpc]
+        public void ChangePlayerSizeClientRpc(ulong clientId, float size)
+        {
+            PlayerControllerB player = PlayerFromId(clientId);
+            player.thisPlayerBody.localScale = new Vector3(size, size, size);
         }
     }
 }

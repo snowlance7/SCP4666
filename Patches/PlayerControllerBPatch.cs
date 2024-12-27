@@ -34,11 +34,17 @@ namespace SCP4666.Patches
             try
             {
                 __instance.voiceMuffledByEnemy = false;
-                MakePlayerInvisible(__instance, false);
-                __instance.thisPlayerBody.localScale = new Vector3(1f, 1f, 1f);
+                MakePlayerInvisible(__instance, false); // TODO: Test this
+
                 if (__instance != localPlayer) { return; }
                 MakePlayerScreenBlack(false);
                 FreezePlayer(localPlayer, false);
+                if (ChildSackBehavior.localPlayerSizeChangedFromSack)
+                {
+                    LoggerInstance.LogDebug("Players size was changed by sack, changing back to default size");
+                    ChildSackBehavior.localPlayerSizeChangedFromSack = false;
+                    NetworkHandlerSCP4666.Instance.ChangePlayerSizeServerRpc(localPlayer.actualClientId, 1f);
+                }
             }
             catch (Exception e)
             {
