@@ -654,17 +654,17 @@ namespace SCP4666
         #region Animation
         // Animation Functions
 
-        public void SetInSpecialAnimation()
+        public void SetInSpecialAnimation() // Synced
         {
             inSpecialAnimation = true;
         }
 
-        public void UnsetInSpecialAnimation()
+        public void UnsetInSpecialAnimation() // Synced
         {
             inSpecialAnimation = false;
         }
 
-        public void CallKnifeBack()
+        public void CallKnifeBack() // Synced
         {
             inSpecialAnimation = true;
             logger.LogDebug("CallKnifeBack() called");
@@ -691,7 +691,7 @@ namespace SCP4666
             KnifeScript.ReturnToYuleman();
         }
 
-        public void CheckForKnife()
+        public void CheckForKnife() // Synced
         {
             logger.LogDebug("CheckForKnife() called");
             callingKnifeBack = false;
@@ -723,43 +723,44 @@ namespace SCP4666
             logger.LogDebug("Grabbed knife");
         }
 
-        public void ThrowKnife()
+        public void ThrowKnife() // Synced
         {
             logger.LogDebug("ThrowKnife() called");
             if (!isKnifeOwned || isKnifeThrown) { return; }
             logger.LogDebug("In throwing knife animation");
+            MakeKnifeInvisible();
             isKnifeThrown = true;
             inSpecialAnimation = false;
             if (!IsServerOrHost) { return; }
             KnifeScript = UnityEngine.GameObject.Instantiate(KnifePrefab, RightHandTransform.position, Quaternion.identity).GetComponentInChildren<YulemanKnifeBehavior>();
             KnifeScript.NetworkObject.Spawn(destroyWithScene: true);
-            ThrowKnifeClientRpc(KnifeScript.NetworkObject);
+            ThrowKnifeClientRpc(KnifeScript.NetworkObject, targetPlayer.actualClientId);
         }
 
-        public void MakeKnifeVisible()
+        public void MakeKnifeVisible() // Synced
         {
             logger.LogDebug("MakeKnifeVisible() called");
             if (!isKnifeOwned || isKnifeThrown) { return; }
             KnifeMeshObj.SetActive(true);
         }
 
-        public void MakeKnifeInvisible()
+        public void MakeKnifeInvisible() // Synced
         {
             logger.LogDebug("MakeKnifeInvisible() called");
             KnifeMeshObj.SetActive(false);
         }
 
-        public void PlayRoarSFX()
+        public void PlayRoarSFX() // Synced
         {
             creatureVoice.PlayOneShot(RoarSFX);
         }
 
-        public void PlayFootstepSFX()
+        public void PlayFootstepSFX() // Synced
         {
             creatureSFX.PlayOneShot(FootstepSFX);
         }
 
-        public void GrabPlayer()
+        public void GrabPlayer() // Synced
         {
             logger.LogDebug("GrabPlayer() called");
             if (inSpecialAnimationWithPlayer == null) { logger.LogWarning("inSpecialAnimationWithPlayer is null in GrabPlayer()"); return; }
@@ -768,7 +769,7 @@ namespace SCP4666
             isGrabbingPlayer = true;
         }
 
-        public void PutPlayerInSack()
+        public void PutPlayerInSack() // Synced
         {
             logger.LogDebug("PutPlayerInSack() called");
             inSpecialAnimation = false;
@@ -792,7 +793,7 @@ namespace SCP4666
             logger.LogDebug(inSpecialAnimationWithPlayer.playerUsername + " put in yulemans sack");
         }
 
-        public void FinishStartAnimation()
+        public void FinishStartAnimation() // Synced
         {
             if (IsServerOrHost)
             {
@@ -826,7 +827,7 @@ namespace SCP4666
         }
 
         [ClientRpc]
-        public void ThrowKnifeClientRpc(NetworkObjectReference netRef)
+        public void ThrowKnifeClientRpc(NetworkObjectReference netRef, ulong targetPlayerId)
         {
             if (!netRef.TryGet(out NetworkObject netObj)) { logger.LogError("Couldnt get knife to throw"); return; }
             if (!netObj.TryGetComponent(out YulemanKnifeBehavior knife)) { logger.LogError("Couldnt get knife to throw"); return; }
@@ -869,6 +870,8 @@ namespace SCP4666
         public void GrabPlayerServerRpc(ulong clientId)
         {
             if (!IsServerOrHost) { return; }
+            targetPlayer = PlayerFromId(clientId);
+            TargetPlayers.Remove(targetPlayer);
             GrabPlayerClientRpc(clientId);
         }
 
@@ -878,7 +881,6 @@ namespace SCP4666
             inSpecialAnimation = true;
             inSpecialAnimationWithPlayer = PlayerFromId(clientId);
             inSpecialAnimationWithPlayer.inAnimationWithEnemy = this;
-            TargetPlayers.Remove(targetPlayer);
             creatureAnimator.SetTrigger("grabPlayer");
         }
 
@@ -901,7 +903,7 @@ namespace SCP4666
         }
 
         [ClientRpc]
-        private void SetEnemyOutsideClientRpc(bool value)
+        public void SetEnemyOutsideClientRpc(bool value)
         {
             SetEnemyOutside(value);
             transform.localScale = value ? outsideScale : insideScale;

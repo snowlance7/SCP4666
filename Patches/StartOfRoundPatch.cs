@@ -27,10 +27,12 @@ namespace SCP4666.Patches
 
         [HarmonyPatch(nameof(StartOfRound.ShipLeaveAutomatically))] // TODO: Test this
         [HarmonyPrefix]
-        public static bool ShipLeaveAutomaticallyPrefix()
+        public static bool ShipLeaveAutomaticallyPrefix(bool leavingOnMidnight)
         {
             try
             {
+                if (leavingOnMidnight) { return true; }
+                LoggerInstance.LogDebug("Ship trying to leave automatically.");
                 ChildSackBehavior sack = GameObject.FindObjectsOfType<ChildSackBehavior>().Where(x => x.isInShipRoom).FirstOrDefault();
                 if (sack == null) { return true; }
 

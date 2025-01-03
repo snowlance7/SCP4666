@@ -16,7 +16,7 @@ namespace SCP4666.YulemanKnife
         {
             base.Update();
             timeSpawned += Time.deltaTime;
-            if (timeSpawned > 1 && playerHeldBy == null)
+            if (timeSpawned > 1 && playerHeldBy == null && IsServerOrHost)
             {
                 NetworkObject.Despawn(true);
             }

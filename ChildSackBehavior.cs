@@ -11,13 +11,13 @@ namespace SCP4666
     public class ChildSackBehavior : PhysicsProp
     {
         System.Random random;
-        bool usingRandomMode = false;
         public static bool localPlayerSizeChangedFromSack;
 
         // Configs
         bool makePlayersChildOnRevive = true;
         float minSize = 0.6f;
         float maxSize = 1f;
+        bool usingRandomMode = false;
 
         public override void Start()
         {
@@ -30,12 +30,20 @@ namespace SCP4666
             random = new System.Random(scrapValue);
         }
 
-        public void Activate() // TODO: Make sure this is synced to all clients
+        public void Activate()
         {
+            StartCoroutine(ActivateCoroutine());
+        }
+
+        public IEnumerator ActivateCoroutine() // TODO: Make sure this is synced to all clients
+        {
+            yield return new WaitForSeconds(5f);
+
             if (playerHeldBy != null && localPlayer == playerHeldBy) { playerHeldBy.DropAllHeldItemsAndSync(); }
 
             if (usingRandomMode)
             {
+                LoggerInstance.LogDebug("Using random mode for child sack");
                 int playersRespawned = 0;
                 foreach (var player in StartOfRound.Instance.allPlayerScripts)
                 {
@@ -44,6 +52,7 @@ namespace SCP4666
                     if (playersRespawned == 0)
                     {
                         RevivePlayer(player);
+                        playersRespawned++;
                         continue;
                     }
 
@@ -58,11 +67,21 @@ namespace SCP4666
                         SpawnPresent();
                     }
                 }
+            }
+            else
+            {
+                LoggerInstance.LogDebug("Reviving dead players");
 
-                return;
+                foreach (var player in StartOfRound.Instance.allPlayerScripts)
+                {
+                    if (!player.isPlayerDead) { continue; }
+
+                    RevivePlayer(player);
+                }
+                //StartOfRound.Instance.ReviveDeadPlayers();
             }
 
-            StartOfRound.Instance.ReviveDeadPlayers();
+            if (IsServerOrHost) { NetworkObject.Despawn(true); }
         }
 
         public void RevivePlayer(PlayerControllerB player)
@@ -236,9 +255,11 @@ namespace SCP4666
                 }
                 else
                 {
+                    LoggerInstance.LogDebug("Destroying dead body");
                     Object.Destroy(deadBody.grabBodyObject.gameObject);
                 }
 
+                LoggerInstance.LogDebug("Destroying dead body");
                 Object.Destroy(deadBody.gameObject);
             }
             /*DeadBodyInfo[] array2 = Object.FindObjectsOfType<DeadBodyInfo>();

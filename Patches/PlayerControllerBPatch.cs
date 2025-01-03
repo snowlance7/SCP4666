@@ -1,6 +1,7 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
 using System;
+using System.Linq;
 using UnityEngine;
 using static SCP4666.Plugin;
 
@@ -26,6 +27,29 @@ namespace SCP4666.Patches
                 return;
             }
         }
+
+        /*[HarmonyPatch(nameof(PlayerControllerB.KillPlayer))]
+        [HarmonyPrefix]
+        public static bool KillPlayerPrefix(PlayerControllerB __instance)
+        {
+            try
+            {
+                ChildSackBehavior sack = GameObject.FindObjectsOfType<ChildSackBehavior>().Where(x => x.isInShipRoom).FirstOrDefault();
+                if (sack == null) { return true; }
+
+                StartOfRound.Instance.allPlayersDead = false;
+                sack.Activate();
+
+                
+
+                return false;
+            }
+            catch (Exception e)
+            {
+                LoggerInstance.LogError(e);
+                return;
+            }
+        }*/
 
         [HarmonyPatch(nameof(PlayerControllerB.KillPlayer))]
         [HarmonyPostfix]

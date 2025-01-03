@@ -312,7 +312,7 @@ namespace SCP4666.YulemanKnife
             isThrown = true;
             canFall = false;
 
-            if (!IsOwner) { return; }
+            if (previousPlayerHeldBy != localPlayer) { return; }
             playerHeldBy.DiscardHeldObject();
             PlayerThrowKnifeServerRpc();
         }
@@ -445,7 +445,7 @@ namespace SCP4666.YulemanKnife
 
         public override void GrabItem() // Synced
         {
-            if (RuneScript != null && IsOwner)
+            if (RuneScript != null && RuneScript.playerHeldBy == localPlayer) // TODO: TEST THIS
             {
                 canFall = true;
                 RuneScript.playerHeldBy.DespawnHeldObject();
@@ -494,6 +494,10 @@ namespace SCP4666.YulemanKnife
             if (IsServerOrHost)
             {
                 NetworkObject.ChangeOwnership(clientId);
+                if (RuneScript != null)
+                {
+                    RuneScript.playerHeldBy.DropAllHeldItemsAndSync();
+                }
                 ItemEquippedClientRpc();
             }
         }
@@ -515,7 +519,7 @@ namespace SCP4666.YulemanKnife
         {
             if (IsServerOrHost)
             {
-                if (previousPlayerHeldBy == null) { return; }
+                if (previousPlayerHeldBy == null) { logger.LogError("PreviousPlayerHeldBy is null"); return; }
                 logger.LogDebug("spawning rune");
                 RuneScript = GameObject.Instantiate(RunePrefab, GetPositionFrontOfPlayer(previousPlayerHeldBy), Quaternion.identity).GetComponentInChildren<YulemanKnifeRuneBehavior>();
                 RuneScript.fallTime = 0f;
