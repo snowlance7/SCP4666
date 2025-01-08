@@ -56,6 +56,8 @@ namespace SCP4666.YulemanKnife
         public bool isThrown;
         public bool stuckInWall;
         bool canFall = true;
+        Vector3 rotationOffset = new Vector3(-30f, -90f, 90f);
+        Vector3 positionOffset = new Vector3(-0.2f, 0.26f, -0.02f);
 
         // Config Variables
         float chargeTime = 1f;
@@ -106,10 +108,10 @@ namespace SCP4666.YulemanKnife
 
                 transform.position = Vector3.Lerp(postThrowPosition, SCP4666AI.Instance.RightHandTransform.position, returnTime);
 
-                if (returnTime >= 1f && IsServerOrHost)
+                if (returnTime >= 1f)
                 {
                     returningToYuleman = false;
-                    NetworkObject.Despawn();
+                    if (IsServerOrHost) { NetworkObject.Despawn(); }
                 }
                 return;
             }
@@ -130,6 +132,23 @@ namespace SCP4666.YulemanKnife
                         GrabGrabbableObjectOnClient(this);
                     }
                 }
+            }
+        }
+
+        public override void LateUpdate()
+        {
+            if (parentObject != null)
+            {
+                transform.rotation = parentObject.rotation;
+                transform.Rotate(rotationOffset);
+                transform.position = parentObject.position;
+                Vector3 _positionOffset = positionOffset;
+                _positionOffset = parentObject.rotation * _positionOffset;
+                transform.position += _positionOffset;
+            }
+            if (radarIcon != null)
+            {
+                radarIcon.position = base.transform.position;
             }
         }
 
@@ -297,8 +316,8 @@ namespace SCP4666.YulemanKnife
         IEnumerator ChargeKnife()
         {
             yield return new WaitForSecondsRealtime(chargeTime);
-            itemProperties.rotationOffset = RotationOffsetThrow;
-            itemProperties.positionOffset = PositionOffsetThrow;
+            rotationOffset = RotationOffsetThrow;
+            positionOffset = PositionOffsetThrow;
             KnifeAudio.PlayOneShot(KnifeChargeSFX, 1f);
             WalkieTalkie.TransmitOneShotAudio(KnifeAudio, KnifeChargeSFX, 1f);
             RoundManager.Instance.PlayAudibleNoise(playerHeldBy.transform.position, KnifeAudio.maxDistance, 0.5f, 0, playerHeldBy.isInHangarShipRoom);
@@ -320,8 +339,8 @@ namespace SCP4666.YulemanKnife
         void ChargeCancel()
         {
             isCharged = false;
-            itemProperties.rotationOffset = RotationOffsetStab;
-            itemProperties.positionOffset = PositionOffsetStab;
+            rotationOffset = RotationOffsetStab;
+            positionOffset = PositionOffsetStab;
         }
 
         public void HitKnife(bool cancel = false)

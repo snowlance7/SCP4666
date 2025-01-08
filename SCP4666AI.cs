@@ -246,16 +246,6 @@ namespace SCP4666
                 return;
             };
 
-            /*if (!spawnedAndVisible)
-            {
-                if (!InLineOfSight())
-                {
-                    spawnedAndVisible = true;
-                    BecomeVisibleClientRpc();
-                }
-                return;
-            }*/
-
             switch (currentBehaviourStateIndex)
             {
                 case (int)State.Spawning:
@@ -609,10 +599,29 @@ namespace SCP4666
             }
         }
 
+        public PlayerControllerB? MeetsStandardPlayerCollisionConditions(Collider other)
+        {
+            if (isEnemyDead)
+            {
+                return null;
+            }
+            PlayerControllerB component = other.gameObject.GetComponent<PlayerControllerB>();
+            if (component == null || component != GameNetworkManager.Instance.localPlayerController)
+            {
+                return null;
+            }
+            if (!PlayerIsTargetable(component, cannotBeInShip: false))
+            {
+                Debug.Log("Player is not targetable");
+                return null;
+            }
+            return component;
+        }
+
         public override void OnCollideWithPlayer(Collider other) // This only runs on client collided with
         {
             base.OnCollideWithPlayer(other);
-            PlayerControllerB player = MeetsStandardPlayerCollisionConditions(other);
+            PlayerControllerB? player = MeetsStandardPlayerCollisionConditions(other);
             if (player == null) { return; }
             if (inSpecialAnimationWithPlayer != null && inSpecialAnimationWithPlayer == player) { return; }
             if (timeSinceDamagePlayer > 3f)
@@ -831,6 +840,7 @@ namespace SCP4666
         {
             if (!netRef.TryGet(out NetworkObject netObj)) { logger.LogError("Couldnt get knife to throw"); return; }
             if (!netObj.TryGetComponent(out YulemanKnifeBehavior knife)) { logger.LogError("Couldnt get knife to throw"); return; }
+            targetPlayer = PlayerFromId(targetPlayerId);
             KnifeScript = knife;
             Vector3 throwDirection = (targetPlayer.bodyParts[5].position - RightHandTransform.position).normalized;
             KnifeScript.ThrowKnife(throwDirection);
@@ -870,6 +880,7 @@ namespace SCP4666
         public void GrabPlayerServerRpc(ulong clientId)
         {
             if (!IsServerOrHost) { return; }
+            inSpecialAnimation = true;
             targetPlayer = PlayerFromId(clientId);
             TargetPlayers.Remove(targetPlayer);
             GrabPlayerClientRpc(clientId);
