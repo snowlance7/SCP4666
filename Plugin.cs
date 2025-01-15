@@ -149,14 +149,6 @@ namespace SCP4666
             //LethalLib.Modules.Items.RegisterScrap(Knife, GetLevelRarities(configKnifeLevelRarities.Value), GetCustomLevelRarities(configKnifeCustomLevelRarities.Value));
             LethalLib.Modules.Items.RegisterScrap(Knife);
 
-            Item Rune = ModAssets.LoadAsset<Item>("Assets/ModAssets/YulemanKnifeRuneItem.asset");
-            if (Rune == null) { LoggerInstance.LogError("Error: Couldnt get YulemanKnifeRuneItem from assets"); return; }
-            LoggerInstance.LogDebug($"Got YulemanKnifeRune prefab");
-
-            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Rune.spawnPrefab);
-            Utilities.FixMixerGroups(Rune.spawnPrefab);
-            LethalLib.Modules.Items.RegisterItem(Rune);
-
             Item Sack = ModAssets.LoadAsset<Item>("Assets/ModAssets/ChildSackItem.asset");
             if (Sack == null) { LoggerInstance.LogError("Error: Couldnt get ChildSackItem from assets"); return; }
             LoggerInstance.LogDebug($"Got ChildSack prefab");
@@ -301,6 +293,9 @@ namespace SCP4666
 
         public static void GrabGrabbableObjectOnClient(GrabbableObject obj)
         {
+            obj.transform.root.SetParent(null);
+            obj.isHeldByEnemy = false;
+
             localPlayer.currentlyGrabbingObject = obj;
             localPlayer.currentlyGrabbingObject.InteractItem();
             if (localPlayer.currentlyGrabbingObject.grabbable && localPlayer.FirstEmptyItemSlot() != -1)

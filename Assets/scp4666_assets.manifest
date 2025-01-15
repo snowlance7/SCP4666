@@ -1,15 +1,15 @@
 ManifestFileVersion: 0
-CRC: 721388680
+CRC: 195087641
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: e67d9795e048944f48582602e037e623
+    Hash: 33fed83ecd060aad76451145f7e166e6
   TypeTreeHash:
     serializedVersion: 2
-    Hash: ccad4f5f5fae8ce804ca61493e3607f9
+    Hash: 958f1cfe1fe9b9dae4420fb6263fc699
   IncrementalBuildHash:
     serializedVersion: 2
-    Hash: e67d9795e048944f48582602e037e623
+    Hash: 33fed83ecd060aad76451145f7e166e6
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -47,7 +47,7 @@ ClassTypes:
 - Class: 114
   Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
 - Class: 114
-  Script: {fileID: 1863187740, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
+  Script: {fileID: 1529503966, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
 - Class: 114
   Script: {fileID: 442677342, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
 - Class: 114
@@ -119,7 +119,6 @@ Assets:
 - Assets/ModAssets/Bestiary/SCP4666TK.asset
 - Assets/ModAssets/NetworkHandlerSCP4666.prefab
 - Assets/ModAssets/YulemanKnifeItem.asset
-- Assets/ModAssets/YulemanKnifeRuneItem.asset
 - Assets/ModAssets/ChildSackItem.asset
 - Assets/ModAssets/Bestiary/SCP4666TN.asset
 Dependencies: []

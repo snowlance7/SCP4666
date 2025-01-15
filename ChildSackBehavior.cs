@@ -37,9 +37,10 @@ namespace SCP4666
 
         public IEnumerator ActivateCoroutine() // TODO: Make sure this is synced to all clients
         {
+            LoggerInstance.LogDebug("In Activate()");
             yield return new WaitForSeconds(5f);
 
-            if (playerHeldBy != null && localPlayer == playerHeldBy) { playerHeldBy.DropAllHeldItemsAndSync(); }
+            if (playerHeldBy != null && localPlayer == playerHeldBy) { playerHeldBy.DropAllHeldItemsAndSync(); } // TODO: Log this, 
 
             if (usingRandomMode)
             {
@@ -70,7 +71,7 @@ namespace SCP4666
             }
             else
             {
-                LoggerInstance.LogDebug("Reviving dead players");
+                LoggerInstance.LogDebug("Reviving dead players"); // TODO: This is not being logged for clients
 
                 foreach (var player in StartOfRound.Instance.allPlayerScripts)
                 {
@@ -282,6 +283,12 @@ namespace SCP4666
             Item giftItem = StartOfRound.Instance.allItemsList.itemsList.Where(x => x.name == "GiftBox").FirstOrDefault();
             GiftBoxItem gift = GameObject.Instantiate(giftItem.spawnPrefab, transform.position, Quaternion.identity).GetComponentInChildren<GiftBoxItem>();
             gift.NetworkObject.Spawn();
+        }
+
+        [ClientRpc]
+        public void ActivateClientRpc()
+        {
+            Activate();
         }
 
         [ServerRpc(RequireOwnership = false)]

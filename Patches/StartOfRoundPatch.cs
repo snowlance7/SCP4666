@@ -36,8 +36,12 @@ namespace SCP4666.Patches
                 ChildSackBehavior sack = GameObject.FindObjectsOfType<ChildSackBehavior>().Where(x => x.isInShipRoom).FirstOrDefault();
                 if (sack == null) { return true; }
 
+                LoggerInstance.LogDebug("Sack found, attempting to stop ship leave and activating");
                 StartOfRound.Instance.allPlayersDead = false;
-                sack.Activate();
+
+                if (!IsServerOrHost) { return false; } // TODO: Test this
+
+                sack.ActivateClientRpc();
 
                 return false;
             }

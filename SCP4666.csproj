@@ -45,6 +45,11 @@
         <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
     </PropertyGroup>
     <ItemGroup>
+      <Compile Remove="SCP4666Mod\**" />
+      <EmbeddedResource Remove="SCP4666Mod\**" />
+      <None Remove="SCP4666Mod\**" />
+    </ItemGroup>
+    <ItemGroup>
       <None Remove=".gitattributes" />
       <None Remove=".gitignore" />
       <None Remove="EnchantedKnifeBehavior.cs~RF123267c.TMP" />

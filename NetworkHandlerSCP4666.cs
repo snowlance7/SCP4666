@@ -29,6 +29,7 @@ namespace SCP4666
                 }
             }
 
+            hideFlags = HideFlags.HideAndDontSave;
             Instance = this;
             logger.LogDebug("set instance to this");
             base.OnNetworkSpawn();
