@@ -56,7 +56,7 @@ namespace SCP4666.YulemanKnife
                 if (returnTime >= timeToReturn)
                 {
                     knifeScript.thrownKnifeScript = null;
-                    Destroy(this);
+                    Destroy(this.gameObject);
                 }
             }
         }

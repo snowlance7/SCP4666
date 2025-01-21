@@ -28,7 +28,8 @@ namespace SCP4666
         public AudioClip RoarSFX;
         public GameObject YulemanMesh;
         public Transform turnCompass;
-        public YulemanKnifeBehavior KnifeScript = null!;
+        public ThrownKnifeScript thrownKnifeScript;
+        public YulemanKnifeBehavior KnifeScript;
 #pragma warning restore 0649
 
         Vector3 mainEntranceOutsidePosition;
@@ -55,6 +56,8 @@ namespace SCP4666
         bool callingKnifeBack;
         bool isAngry;
         int timesHitWhileAbducting;
+
+
 
         // Constants
         readonly Vector3 insideScale = new Vector3(1.5f, 1.5f, 1.5f);
@@ -673,7 +676,7 @@ namespace SCP4666
         public void DoSlashDamageAnimation()
         {
             if (!IsServerOrHost) { return; }
-            PlayerControllerB[] players = GetAllPlayersInLineOfSight(90, 1);
+            PlayerControllerB[] players = GetAllPlayersInLineOfSight(90, 3);
             foreach (var player in players)
             {
                 int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;

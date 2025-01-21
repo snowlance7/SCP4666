@@ -298,7 +298,7 @@ namespace SCP4666.YulemanKnife
         {
             if (playerHeldBy != null)
             {
-                //playerHeldBy.activatingItem = !value; // TODO: Temp for testing
+                playerHeldBy.activatingItem = !value;
             }
             isThrown = !value;
             KnifeMesh.SetActive(value);

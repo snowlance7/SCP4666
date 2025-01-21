@@ -41,7 +41,7 @@ namespace SCP4666.Patches
 
                 if (!IsServerOrHost) { return false; } // TODO: Test this
 
-                sack.ActivateClientRpc();
+                sack.Activate();
 
                 return false;
             }
