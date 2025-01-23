@@ -153,12 +153,13 @@ namespace SCP4666.YulemanKnife
                 Vector3 forward = KnifeTip.transform.forward;
                 if (knifeScript.playerHeldBy != null)
                 {
+                    if (other.gameObject.TryGetComponent(out PlayerControllerB player) && player == knifeScript.playerHeldBy) { return; } // TODO: Test this
                     bool hitSuccessful = iHit.Hit(configKnifeHitForce.Value, forward, knifeScript.previousPlayerHeldBy, playHitSFX: true, 5);
                     if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
                 }
                 else
                 {
-                    if (!other.TryGetComponent<PlayerControllerB>(out PlayerControllerB player)) { return; }
+                    if (!other.gameObject.TryGetComponent(out PlayerControllerB player)) { return; }
                     if (localPlayer != player) { return; }
                     player.DamagePlayer(configKnifeHitForceYuleman.Value, true, true, CauseOfDeath.Stabbing);
                 }

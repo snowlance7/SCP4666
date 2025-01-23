@@ -76,5 +76,22 @@ namespace SCP4666.Patches
                 return;
             }
         }
+
+        [HarmonyPatch(nameof(PlayerControllerB.DamagePlayer))]
+        [HarmonyPrefix]
+        public static bool DamagePlayerPrefix(PlayerControllerB __instance)
+        {
+            try
+            {
+                if (SCP4666AI.Instance == null) { return true; }
+                if (SCP4666AI.Instance.inSpecialAnimationWithPlayer == __instance) { return false; }
+                return true;
+            }
+            catch (Exception e)
+            {
+                LoggerInstance.LogError(e);
+                return true;
+            }
+        }
     }
 }

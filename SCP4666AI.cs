@@ -8,6 +8,7 @@ using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Analytics;
 using static SCP4666.Plugin;
 
 namespace SCP4666
@@ -30,13 +31,13 @@ namespace SCP4666
         public Transform turnCompass;
         public ThrownKnifeScript thrownKnifeScript;
         public YulemanKnifeBehavior KnifeScript;
+        public BoxCollider AttackArea;
 #pragma warning restore 0649
 
         Vector3 mainEntranceOutsidePosition;
         Vector3 mainEntrancePosition;
         Vector3 escapePosition;
 
-        PlayerControllerB? playerStart;
         List<PlayerControllerB> TargetPlayers = [];
         bool localPlayerHasSeenYuleman;
         bool spawnedAndVisible;
@@ -48,7 +49,6 @@ namespace SCP4666
         float timeSinceTeleport;
         float timeSinceKnifeThrown;
         float timeSinceGrabPlayer;
-        float timeSinceSyncedAIInterval;
 
         bool teleporting;
 
@@ -173,17 +173,10 @@ namespace SCP4666
             if (!teleporting) { timeSinceTeleport += Time.deltaTime; }
             timeSinceKnifeThrown += Time.deltaTime;
             timeSinceGrabPlayer += Time.deltaTime;
-            timeSinceSyncedAIInterval += Time.deltaTime;
 
-            if (!spawnedAndVisible && timeSinceSyncedAIInterval > AIIntervalTime)
+            if (currentBehaviourStateIndex == (int)State.Spawning)
             {
-                timeSinceSyncedAIInterval = 0f;
-                playerStart = GetClosestPlayer(false, true);
-            }
-
-            if (currentBehaviourStateIndex == (int)State.Spawning && playerStart != null)
-            {
-                turnCompass.LookAt(playerStart.gameplayCamera.transform.position);
+                turnCompass.LookAt(localPlayer.gameplayCamera.transform.position);
                 transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(new Vector3(0f, turnCompass.eulerAngles.y - 90, 0f)), 10f * Time.deltaTime); // TODO: Test this
             }
 
@@ -480,38 +473,6 @@ namespace SCP4666
             return targetPlayer != null;
         }
 
-        public void DropPlayerOnLocalClient() // TODO: Needs to be synced with all clients
-        {
-            logger.LogDebug("In DropPlayerOnLocalClient()");
-            if (inSpecialAnimationWithPlayer != null)
-            {
-                if (isPlayerInSack)
-                {
-                    logger.LogDebug($"Dropping {inSpecialAnimationWithPlayer.playerUsername} from sack");
-
-                    inSpecialAnimationWithPlayer.voiceMuffledByEnemy = false;
-                    MakePlayerInvisible(inSpecialAnimationWithPlayer, false);
-                    creatureAnimator.SetBool("bagWalk", false);
-                }
-
-                if (localPlayer == inSpecialAnimationWithPlayer)
-                {
-                    MakePlayerScreenBlack(false);
-                    FreezePlayer(localPlayer, false);
-                    localPlayerHasSeenYuleman = false;
-                }
-                
-                inSpecialAnimationWithPlayer.inAnimationWithEnemy = null;
-                inSpecialAnimationWithPlayer.transform.SetParent(null);
-            }
-
-            isGrabbingPlayer = false;
-            isPlayerInSack = false;
-            inSpecialAnimationWithPlayer = null;
-            timesHitWhileAbducting = 0;
-            timeSinceGrabPlayer = 0f;
-        }
-
         #region Overrides
         public override void DaytimeEnemyLeave()
         {
@@ -528,7 +489,7 @@ namespace SCP4666
         public override void KillEnemy(bool destroy = false) // Synced
         {
             logger.LogDebug("In KillEnemy()");
-            DropPlayerOnLocalClient();
+            CancelSpecialAnimationWithPlayer();
 
             if (KnifeScript.thrownKnifeScript != null)
             {
@@ -540,18 +501,16 @@ namespace SCP4666
             {
                 if (isKnifeOwned)
                 {
-                    /*YulemanKnifeBehavior newKnife = GameObject.Instantiate(KnifeScript.itemProperties.spawnPrefab, RightHandTransform.position, Quaternion.identity).GetComponentInChildren<YulemanKnifeBehavior>();
-                    int knifeValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value);
-                    newKnife.SetScrapValue(knifeValue);
-                    newKnife.NetworkObject.Spawn();*/
+                    YulemanKnifeBehavior newKnife = GameObject.Instantiate(KnifeScript.itemProperties.spawnPrefab, RightHandTransform.position, Quaternion.identity).GetComponentInChildren<YulemanKnifeBehavior>();
+                    newKnife.NetworkObject.Spawn();
 
                     int knifeValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value + 1);
-                    SetKnifeAsGrabbableClientRpc(knifeValue);
+                    SetKnifeValueClientRpc(newKnife.NetworkObject, knifeValue);
                 }
 
                 ChildSackBehavior sack = GameObject.Instantiate(ChildSackPrefab, transform.position, Quaternion.identity).GetComponentInChildren<ChildSackBehavior>();
                 int sackValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value);
-                sack.SetScrapValue(sackValue); // TODO: Make sure value is being set
+                sack.SetScrapValue(sackValue);
                 sack.NetworkObject.Spawn();
                 
             }
@@ -581,7 +540,7 @@ namespace SCP4666
                 logger.LogDebug($"Yuleman hit {timesHitWhileAbducting} times");
                 if (timesHitWhileAbducting >= hitAmountToDropPlayer)
                 {
-                    DropPlayerOnLocalClient(); // TODO: Make sure this is running for all clients
+                    CancelSpecialAnimationWithPlayer(); // TODO: Make sure this is running for all clients
                 }
             }
         }
@@ -640,6 +599,8 @@ namespace SCP4666
 
                 if (IsPlayerChild(player) && timeSinceGrabPlayer > 10f)
                 {
+                    if (KnifeScript.isThrown || callingKnifeBack) { return; } // TODO: Test this
+                    timeSinceGrabPlayer = 0f;
                     inSpecialAnimation = true;
                     FreezePlayer(player, true);
                     player.DropAllHeldItemsAndSync();
@@ -664,7 +625,32 @@ namespace SCP4666
         public override void CancelSpecialAnimationWithPlayer() // TODO: Make sure this is synced
         {
             logger.LogDebug("In CancelSpecialAnimationWithPlayer()");
-            DropPlayerOnLocalClient();
+
+            if (isPlayerInSack)
+            {
+                inSpecialAnimationWithPlayer.voiceMuffledByEnemy = false;
+                MakePlayerInvisible(inSpecialAnimationWithPlayer, false);
+                creatureAnimator.SetBool("bagWalk", false);
+
+                if (localPlayer == inSpecialAnimationWithPlayer)
+                {
+                    MakePlayerScreenBlack(false);
+                }
+            }
+
+            if (localPlayer == inSpecialAnimationWithPlayer)
+            {
+                FreezePlayer(localPlayer, false);
+                localPlayerHasSeenYuleman = false;
+            }
+
+            inSpecialAnimationWithPlayer.transform.SetParent(null);
+
+            isGrabbingPlayer = false;
+            isPlayerInSack = false;
+            timesHitWhileAbducting = 0;
+            timeSinceGrabPlayer = 0f;
+
             base.CancelSpecialAnimationWithPlayer();
         }
 
@@ -676,9 +662,12 @@ namespace SCP4666
         public void DoSlashDamageAnimation()
         {
             if (!IsServerOrHost) { return; }
-            PlayerControllerB[] players = GetAllPlayersInLineOfSight(90, 3);
+            logger.LogDebug("In DoSlashDamageAnimation()");
+            //List<PlayerControllerB> players = GetAllPlayersInAttackArea();
+            List<PlayerControllerB> players = StartOfRound.Instance.allPlayerScripts.ToList();
             foreach (var player in players)
             {
+                if (Vector3.Distance(player.transform.position, transform.position) > 5f) { continue; }
                 int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
                 player.DamagePlayer(sliceDamage, true, true, CauseOfDeath.Stabbing, deathAnim);
             }
@@ -687,12 +676,33 @@ namespace SCP4666
         public void DoSlapDamageAnimation()
         {
             if (!IsServerOrHost) { return; }
-            PlayerControllerB[] players = GetAllPlayersInLineOfSight(90, 1);
+            logger.LogDebug("In DoSlapDamageAnimation()");
+            //List<PlayerControllerB> players = GetAllPlayersInAttackArea();
+            List<PlayerControllerB> players = StartOfRound.Instance.allPlayerScripts.ToList();
             foreach (var player in players)
             {
+                if (Vector3.Distance(player.transform.position, transform.position) > 5f) { continue; }
                 player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
             }
         }
+
+        /*List<PlayerControllerB> GetAllPlayersInAttackArea() // TODO: Figure out how to use this in next update
+        {
+            List<PlayerControllerB> players = [];
+
+            //Vector3 center = AttackArea.transform.TransformPoint(AttackArea.center);
+            Collider[] hitColliders = Physics.OverlapBox(AttackArea.center, AttackArea.size / 2, AttackArea.transform.rotation, StartOfRound.Instance.playersMask);
+
+            foreach (Collider collider in hitColliders)
+            {
+                logger.LogDebug("Checking collider");
+                if (!collider.gameObject.TryGetComponent(out PlayerControllerB player)) { continue; }
+                logger.LogDebug("Adding player to list");
+                players.Add(player);
+            }
+
+            return players;
+        }*/
 
         public void SetInSpecialAnimation() // Synced
         {
@@ -875,7 +885,7 @@ namespace SCP4666
             logger.LogDebug("In KillPlayerInSackClientRpc()");
             if (inSpecialAnimationWithPlayer == null) { logger.LogError("inSpecialAnimationWithPlayer is null in KillPlayerInSackClientRpc()"); return; }
             PlayerControllerB player = inSpecialAnimationWithPlayer;
-            DropPlayerOnLocalClient();
+            CancelSpecialAnimationWithPlayer();
             if (localPlayer != player) { return; }
             localPlayer.KillPlayer(Vector3.zero, false);
         }
@@ -917,6 +927,8 @@ namespace SCP4666
             inSpecialAnimation = true;
             targetPlayer = PlayerFromId(clientId);
             inSpecialAnimationWithPlayer = targetPlayer;
+            inSpecialAnimationWithPlayer.inSpecialInteractAnimation = true;
+            inSpecialAnimationWithPlayer.snapToServerPosition = true;
             inSpecialAnimationWithPlayer.inAnimationWithEnemy = this;
             creatureAnimator.SetTrigger("grabPlayer");
         }
@@ -947,12 +959,11 @@ namespace SCP4666
         }
 
         [ClientRpc]
-        public void SetKnifeAsGrabbableClientRpc(int newScrapValue)
+        public void SetKnifeValueClientRpc(NetworkObjectReference netRef, int value)
         {
-            MakeKnifeVisible();
-            KnifeScript.grabbable = true;
-            KnifeScript.ScanNode.enabled = true;
-            KnifeScript.SetScrapValue(newScrapValue);
+            if (!netRef.TryGet(out NetworkObject netobj)) { return; }
+            if (!netobj.TryGetComponent(out YulemanKnifeBehavior knife)) { return; }
+            knife.SetScrapValue(value);
         }
 
         [ClientRpc]

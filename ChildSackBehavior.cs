@@ -180,8 +180,8 @@ namespace SCP4666
             {
                 player.bleedingHeavily = false;
                 player.criticallyInjured = false;
-                player.health = 5;
-                HUDManager.Instance.UpdateHealthUI(5);
+                player.health = 100;
+                HUDManager.Instance.UpdateHealthUI(100);
                 player.playerBodyAnimator?.SetBool("Limp", value: false);
                 player.spectatedPlayerScript = null;
                 StartOfRound.Instance.SetSpectateCameraToGameOverMode(enableGameOver: false, player);
