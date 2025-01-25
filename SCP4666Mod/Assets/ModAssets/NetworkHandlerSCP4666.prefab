@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5877027710955927881}
   - component: {fileID: 1218683461621771147}
+  - component: {fileID: -872362285485348061}
   m_Layer: 0
   m_Name: NetworkHandlerSCP4666
   m_TagString: Untagged
@@ -44,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 2413993122
+  GlobalObjectIdHash: 3693356510
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 0
@@ -53,3 +54,15 @@ MonoBehaviour:
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 0
+--- !u!114 &-872362285485348061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3909710921850101342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -337190977, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

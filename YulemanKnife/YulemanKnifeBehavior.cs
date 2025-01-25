@@ -50,23 +50,6 @@ namespace SCP4666.YulemanKnife
         Vector3 rotationOffset = new Vector3(-30f, -90f, 90f);
         Vector3 positionOffset = new Vector3(-0.2f, 0.26f, -0.02f);
 
-        // Config Variables
-        float chargeTime = 1f;
-        int knifeHitForce = 1;
-        float throwForce = 100f;
-        int knifeHitForceYuleman = 25;
-
-        public override void Start()
-        {
-            base.Start();
-
-            logger.LogDebug("grabbable: " + grabbable);
-            chargeTime = configChargeTime.Value;
-            knifeHitForce = configKnifeHitForce.Value;
-            throwForce = configThrowForce.Value;
-            knifeHitForceYuleman = configKnifeHitForceYuleman.Value;
-        }
-
         public override void Update()
         {
             base.Update();
@@ -147,7 +130,7 @@ namespace SCP4666.YulemanKnife
 
         IEnumerator ChargeKnife()
         {
-            yield return new WaitForSecondsRealtime(chargeTime);
+            yield return new WaitForSecondsRealtime(configChargeTime.Value);
             rotationOffset = RotationOffsetThrow;
             positionOffset = PositionOffsetThrow;
             KnifeAudio.PlayOneShot(KnifeChargeSFX, 1f);
@@ -179,10 +162,10 @@ namespace SCP4666.YulemanKnife
                 return;
             }
             previousPlayerHeldBy.activatingItem = false;
-            bool flag = false;
-            bool flag2 = false;
-            int num = -1;
-            bool flag3 = false;
+            bool hasHitSomething = false;
+            bool dealtDamage = false;
+            int surfaceIndex = -1;
+            bool hasTriggeredFirstHit = false;
             if (!cancel && Time.realtimeSinceStartup - timeAtLastDamageDealt > 0.43f)
             {
                 previousPlayerHeldBy.twoHanded = false;
@@ -195,13 +178,13 @@ namespace SCP4666.YulemanKnife
                     logger.LogDebug("Hit " + layerName);
                     if (objectsHitByKnifeList[i].transform.gameObject.layer == 8 || objectsHitByKnifeList[i].transform.gameObject.layer == 11)
                     {
-                        flag = true;
+                        hasHitSomething = true;
                         string text = objectsHitByKnifeList[i].collider.gameObject.tag;
                         for (int j = 0; j < StartOfRound.Instance.footstepSurfaces.Length; j++)
                         {
                             if (StartOfRound.Instance.footstepSurfaces[j].surfaceTag == text)
                             {
-                                num = j;
+                                surfaceIndex = j;
                                 break;
                             }
                         }
@@ -212,14 +195,15 @@ namespace SCP4666.YulemanKnife
                         {
                             continue;
                         }
-                        flag = true;
+                        hasHitSomething = true;
                         Vector3 forward = previousPlayerHeldBy.gameplayCamera.transform.forward;
                         try
                         {
-                            EnemyAICollisionDetect component2 = objectsHitByKnifeList[i].transform.GetComponent<EnemyAICollisionDetect>();
-                            if (component2 != null)
+                            int hitForce = 1;
+                            EnemyAICollisionDetect collision = objectsHitByKnifeList[i].transform.GetComponent<EnemyAICollisionDetect>();
+                            if (collision != null)
                             {
-                                if (!(component2.mainScript == null) && !list.Contains(component2.mainScript))
+                                if (collision.mainScript != null && !list.Contains(collision.mainScript))
                                 {
                                     goto IL_02f2;
                                 }
@@ -227,23 +211,24 @@ namespace SCP4666.YulemanKnife
                             }
                             if (!(objectsHitByKnifeList[i].transform.GetComponent<PlayerControllerB>() != null))
                             {
+                                hitForce = configKnifeHitForce.Value;
                                 goto IL_02f2;
                             }
-                            if (!flag3)
+                            if (!hasTriggeredFirstHit)
                             {
-                                flag3 = true;
+                                hasTriggeredFirstHit = true;
                                 goto IL_02f2;
                             }
                             goto end_IL_027b;
                         IL_02f2:
-                            bool flag4 = component.Hit(knifeHitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
-                            if (flag4 && component2 != null)
+                            bool damageDealtSuccessfully = component.Hit(hitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
+                            if (damageDealtSuccessfully && collision != null)
                             {
-                                list.Add(component2.mainScript);
+                                list.Add(collision.mainScript);
                             }
-                            if (!flag2 && flag4)
+                            if (!dealtDamage && damageDealtSuccessfully)
                             {
-                                flag2 = true;
+                                dealtDamage = true;
                                 timeAtLastDamageDealt = Time.realtimeSinceStartup;
                                 //bloodParticle.Play(withChildren: true);
                                 RoundManager.PlayRandomClip(KnifeAudio, TearSFX);
@@ -258,16 +243,16 @@ namespace SCP4666.YulemanKnife
                     }
                 }
             }
-            if (flag)
+            if (hasHitSomething)
             {
                 //RoundManager.PlayRandomClip(knifeAudio, hitSFX);
                 FindObjectOfType<RoundManager>().PlayAudibleNoise(transform.position, 17f, 0.8f);
-                if (!flag2 && num != -1)
+                if (!dealtDamage && surfaceIndex != -1)
                 {
-                    KnifeAudio.PlayOneShot(StartOfRound.Instance.footstepSurfaces[num].hitSurfaceSFX);
-                    WalkieTalkie.TransmitOneShotAudio(KnifeAudio, StartOfRound.Instance.footstepSurfaces[num].hitSurfaceSFX);
+                    KnifeAudio.PlayOneShot(StartOfRound.Instance.footstepSurfaces[surfaceIndex].hitSurfaceSFX);
+                    WalkieTalkie.TransmitOneShotAudio(KnifeAudio, StartOfRound.Instance.footstepSurfaces[surfaceIndex].hitSurfaceSFX);
                 }
-                HitShovelServerRpc(num);
+                HitShovelServerRpc(surfaceIndex);
             }
         }
         

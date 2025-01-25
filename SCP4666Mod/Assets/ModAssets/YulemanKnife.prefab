@@ -211,6 +211,7 @@ GameObject:
   - component: {fileID: 6939515737853502135}
   - component: {fileID: 52748947231065373}
   - component: {fileID: 9052838819996086881}
+  - component: {fileID: 1632493528781374337}
   m_Layer: 6
   m_Name: YulemanKnife
   m_TagString: PhysicsProp
@@ -478,6 +479,22 @@ MonoBehaviour:
   thrownKnifeScript: {fileID: 0}
   previousPlayerHeldBy: {fileID: 0}
   isThrown: 0
+--- !u!114 &1632493528781374337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1536395025649834618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04f75356a7e9c978bddc7d568e58a50b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useReverb: 0
+  overridingLowPass: 0
+  lowPassOverride: 20000
+  debugLog: 0
 --- !u!1 &1663829935653774067
 GameObject:
   m_ObjectHideFlags: 0

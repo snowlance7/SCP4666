@@ -31,7 +31,7 @@ namespace SCP4666.YulemanKnife
 
         // Constants
         public const float timeToReturn = 1f;
-        public static float throwForce = 10f;
+        public static float throwForce = 100f;
         const float maxThrowDistance = 400f;
         const float returnSpeed = 1f;
 

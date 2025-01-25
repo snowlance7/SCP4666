@@ -127,6 +127,7 @@ GameObject:
   - component: {fileID: 9066130642244382994}
   - component: {fileID: 524793123720820934}
   - component: {fileID: 6855517445127851973}
+  - component: {fileID: 1520554761886092951}
   m_Layer: 0
   m_Name: ThrowingKnife
   m_TagString: Untagged
@@ -317,3 +318,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1520554761886092951
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6565499476726160040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04f75356a7e9c978bddc7d568e58a50b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useReverb: 0
+  overridingLowPass: 0
+  lowPassOverride: 20
+  debugLog: 0
