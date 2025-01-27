@@ -483,7 +483,7 @@ namespace SCP4666
             {
                 KillPlayerInSackClientRpc();
             }
-            KillEnemyOnOwnerClient(/*true*/); // TODO: Test this
+            KillEnemyOnOwnerClient(true);
         }
 
         public override void KillEnemy(bool destroy = false) // Synced
@@ -497,22 +497,26 @@ namespace SCP4666
                 KnifeScript.thrownKnifeScript = null;
             }
 
+            MakeKnifeInvisible();
+            KnifeScript.grabbable = false;
+
             if (IsServerOrHost && !daytimeEnemyLeaving)
             {
                 if (isKnifeOwned)
                 {
-                    YulemanKnifeBehavior newKnife = GameObject.Instantiate(YulemanKnifePrefab, RightHandTransform.position, Quaternion.identity).GetComponentInChildren<YulemanKnifeBehavior>();
+                    YulemanKnifeBehavior newKnife = GameObject.Instantiate(YulemanKnifePrefab, RightHandTransform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<YulemanKnifeBehavior>();
                     newKnife.NetworkObject.Spawn();
 
                     int knifeValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value + 1);
                     SetKnifeValueClientRpc(newKnife.NetworkObject, knifeValue);
                 }
 
-                ChildSackBehavior sack = GameObject.Instantiate(ChildSackPrefab, transform.position, Quaternion.identity).GetComponentInChildren<ChildSackBehavior>();
-                int sackValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value);
-                sack.SetScrapValue(sackValue);
+                ChildSackBehavior sack = GameObject.Instantiate(ChildSackPrefab, RightHandTransform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<ChildSackBehavior>();
                 sack.NetworkObject.Spawn();
-                
+
+                int sackValue = UnityEngine.Random.Range(configSackMinValue.Value, configSackMaxValue.Value + 1);
+                SetSackValueClientRpc(sack.NetworkObject, sackValue);
+
             }
             base.KillEnemy(destroy);
         }
@@ -592,14 +596,11 @@ namespace SCP4666
 
             if (isKnifeOwned && !KnifeScript.isThrown)
             {
-                int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
-                player.DamagePlayer(sliceDamage, true, true, CauseOfDeath.Stabbing, deathAnim);
-                DoAnimationServerRpc("slash");
+                DamagePlayerServerRpc(player.actualClientId, "slash");
             }
             else
             {
-                player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
-                DoAnimationServerRpc("slap");
+                DamagePlayerServerRpc(player.actualClientId, "slap");
             }
             logger.LogDebug("Finished OnCollideWithPlayer()");
         }
@@ -629,7 +630,10 @@ namespace SCP4666
                 StartOfRound.Instance.allowLocalPlayerDeath = true;
             }
 
-            inSpecialAnimationWithPlayer.transform.SetParent(null);
+            if (inSpecialAnimationWithPlayer != null)
+            {
+                inSpecialAnimationWithPlayer.transform.SetParent(null);
+            }
 
             isGrabbingPlayer = false;
             isPlayerInSack = false;
@@ -644,50 +648,21 @@ namespace SCP4666
         #region Animation
         // Animation Functions
 
-        /*public void DoSlashDamageAnimation()
+        public void DoSlashDamageAnimation() // Synced
         {
-            if (!IsServerOrHost) { return; }
-            logger.LogDebug("In DoSlashDamageAnimation()");
-            //List<PlayerControllerB> players = GetAllPlayersInAttackArea();
-            List<PlayerControllerB> players = StartOfRound.Instance.allPlayerScripts.ToList();
-            foreach (var player in players)
-            {
-                if (Vector3.Distance(player.transform.position, RightHandTransform.position) > attackRange) { continue; }
-                int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
-                player.DamagePlayer(sliceDamage, true, true, CauseOfDeath.Stabbing, deathAnim);
-            }
+            if (localPlayer != targetPlayer) { return; }
+            logger.LogDebug("Damaging " + targetPlayer.playerUsername);
+            int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
+            targetPlayer.DamagePlayer(sliceDamage, true, true, CauseOfDeath.Stabbing, deathAnim);
+
         }
 
-        public void DoSlapDamageAnimation()
+        public void DoSlapDamageAnimation() // Synced
         {
-            if (!IsServerOrHost) { return; }
-            logger.LogDebug("In DoSlapDamageAnimation()");
-            //List<PlayerControllerB> players = GetAllPlayersInAttackArea();
-            List<PlayerControllerB> players = StartOfRound.Instance.allPlayerScripts.ToList();
-            foreach (var player in players)
-            {
-                if (Vector3.Distance(player.transform.position, RightHandTransform.position) > attackRange) { continue; }
-                player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
-            }
+            if (localPlayer != targetPlayer) { return; }
+            logger.LogDebug("Damaging " + targetPlayer.playerUsername);
+            targetPlayer.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
         }
-
-        List<PlayerControllerB> GetAllPlayersInAttackArea() // TODO: Figure out how to use this in next update
-        {
-            List<PlayerControllerB> players = [];
-
-            //Vector3 center = AttackArea.transform.TransformPoint(AttackArea.center);
-            Collider[] hitColliders = Physics.OverlapBox(AttackArea.center, AttackArea.size / 2, AttackArea.transform.rotation, StartOfRound.Instance.playersMask);
-
-            foreach (Collider collider in hitColliders)
-            {
-                logger.LogDebug("Checking collider");
-                if (!collider.gameObject.TryGetComponent(out PlayerControllerB player)) { continue; }
-                logger.LogDebug("Adding player to list");
-                players.Add(player);
-            }
-
-            return players;
-        }*/
 
         public void SetInSpecialAnimation() // Synced
         {
@@ -816,6 +791,7 @@ namespace SCP4666
 
         public void FinishStartAnimation() // Synced
         {
+            logger.LogDebug("In FinishStartAnimation()");
             if (IsServerOrHost)
             {
                 SwitchToBehaviourClientRpc((int)State.Chasing);
@@ -827,6 +803,15 @@ namespace SCP4666
         #endregion
 
         // RPC's
+
+        [ServerRpc(RequireOwnership = false)]
+        public void DamagePlayerServerRpc(ulong clientId, string animationName)
+        {
+            if (!IsServerOrHost) { return; }
+            targetPlayer = PlayerFromId(clientId);
+            logger.LogDebug("TargetPlayer is now: " + targetPlayer.playerUsername);
+            networkAnimator.SetTrigger(animationName);
+        }
 
         [ClientRpc]
         public void BecomeVisibleClientRpc()
@@ -948,6 +933,16 @@ namespace SCP4666
             if (!netRef.TryGet(out NetworkObject netobj)) { return; }
             if (!netobj.TryGetComponent(out YulemanKnifeBehavior knife)) { return; }
             knife.SetScrapValue(value);
+            knife.FallToGround();
+        }
+
+        [ClientRpc]
+        public void SetSackValueClientRpc(NetworkObjectReference netRef, int value)
+        {
+            if (!netRef.TryGet(out NetworkObject netobj)) { return; }
+            if (!netobj.TryGetComponent(out ChildSackBehavior sack)) { return; }
+            sack.SetScrapValue(value);
+            sack.FallToGround();
         }
 
         [ClientRpc]
