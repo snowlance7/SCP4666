@@ -321,15 +321,18 @@ namespace SCP4666
                     break;
 
                 case (int)State.Abducting:
-                    agent.speed = 6f;
+                    agent.speed = 4f;
 
                     if (isOutside)
                     {
                         if (daytimeEnemyLeaving) { return; }
                         if (Vector3.Distance(transform.position, escapePosition) < 1f)
                         {
-                            daytimeEnemyLeaving = true;
-                            DaytimeEnemyLeave();
+                            if (isPlayerInSack && inSpecialAnimationWithPlayer != null)
+                            {
+                                KillPlayerInSackClientRpc();
+                            }
+                            NetworkObject.Despawn(true);
                         }
 
                         SetDestinationToPosition(escapePosition);
@@ -474,18 +477,6 @@ namespace SCP4666
         }
 
         #region Overrides
-        public override void DaytimeEnemyLeave()
-        {
-            logger.LogDebug("In DaytimeEnemyLeave()");
-            base.DaytimeEnemyLeave();
-            if (!IsServerOrHost || currentBehaviourStateIndex != (int)State.Abducting) { return; }
-            if (isPlayerInSack)
-            {
-                KillPlayerInSackClientRpc();
-            }
-            KillEnemyOnOwnerClient(true);
-        }
-
         public override void KillEnemy(bool destroy = false) // Synced
         {
             logger.LogDebug("In KillEnemy()");
@@ -786,6 +777,7 @@ namespace SCP4666
             MakePlayerInvisible(inSpecialAnimationWithPlayer, true);
             inSpecialAnimationWithPlayer.voiceMuffledByEnemy = true;
             inSpecialAnimationWithPlayer.playerCollider.gameObject.SetActive(false); // TODO: TEST THIS
+            SwitchToBehaviourStateOnLocalClient((int)State.Abducting);
             logger.LogDebug(inSpecialAnimationWithPlayer.playerUsername + " put in yulemans sack");
         }
 

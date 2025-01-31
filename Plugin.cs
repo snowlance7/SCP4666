@@ -264,7 +264,7 @@ namespace SCP4666
             scavengerModel.transform.Find("LOD1").gameObject.SetActive(!value);
             scavengerModel.transform.Find("LOD2").gameObject.SetActive(!value);
             scavengerModel.transform.Find("LOD3").gameObject.SetActive(!value);
-
+            player.playerBadgeMesh.gameObject.SetActive(value);
         }
 
         public static bool IsPlayerChild(PlayerControllerB player)
