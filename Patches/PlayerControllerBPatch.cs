@@ -58,7 +58,7 @@ namespace SCP4666.Patches
             try
             {
                 __instance.voiceMuffledByEnemy = false;
-                MakePlayerInvisible(__instance, false); // TODO: Test this
+                MakePlayerInvisible(__instance, false);
 
                 if (__instance != localPlayer) { return; }
                 MakePlayerScreenBlack(false);

@@ -258,7 +258,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 6565499476726160040}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1529503966, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
+  m_Script: {fileID: 1529503966, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   KnifeAudio: {fileID: 1283868472239927308}
@@ -268,7 +268,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 7c913187d9972ec4ea86a53b70a327e5, type: 3}
   KnifeImpactSFX: {fileID: 8300000, guid: a9e03dd1fb4346c4a8e95b98ba0028c1, type: 3}
   KnifeWallPullSFX: {fileID: 8300000, guid: 2f84ce99fb1e1f446a32632d8a50410c, type: 3}
-  KnifeTip: {fileID: 6329715010280230110}
+  KnifeTip: {fileID: 6843200044708266910}
   knifeScript: {fileID: 0}
 --- !u!54 &524793123720820934
 Rigidbody:
@@ -332,5 +332,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   useReverb: 0
   overridingLowPass: 0
-  lowPassOverride: 20
+  lowPassOverride: 20000
   debugLog: 0

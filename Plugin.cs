@@ -46,15 +46,15 @@ namespace SCP4666
         public static ConfigEntry<float> configKnifeThrowMinDistance;
         public static ConfigEntry<float> configKnifeThrowMaxDistance;
         public static ConfigEntry<float> configTeleportDistance;
-        public static ConfigEntry<float> configDistanceToPickUpKnife;
+        //public static ConfigEntry<float> configDistanceToPickUpKnife;
         public static ConfigEntry<int> configSliceDamage;
         public static ConfigEntry<int> configSlapDamage;
         public static ConfigEntry<int> configHitAmountToDropPlayer;
         public static ConfigEntry<bool> configMakeScreenBlackAbduct;
 
         // Enchanted Knife Configs
-        public static ConfigEntry<string> configKnifeLevelRarities;
-        public static ConfigEntry<string> configKnifeCustomLevelRarities;
+        //public static ConfigEntry<string> configKnifeLevelRarities;
+        //public static ConfigEntry<string> configKnifeCustomLevelRarities;
         public static ConfigEntry<int> configKnifeMinValue;
         public static ConfigEntry<int> configKnifeMaxValue;
 
@@ -94,13 +94,13 @@ namespace SCP4666
 
             configMinPresentCount = Config.Bind("SCP-4666", "Minimum Present Count", 3, "Minimum number of presents spawned by SCP-4666.");
             configMaxPresentCount = Config.Bind("SCP-4666", "Maximum Present Count", 5, "Maximum number of presents spawned by SCP-4666.");
-            configTeleportCooldown = Config.Bind("SCP-4666", "Teleport Cooldown", 10f, "Cooldown (in seconds) between SCP-4666 teleport actions.");
+            configTeleportCooldown = Config.Bind("SCP-4666", "Teleport Cooldown", 15f, "Cooldown (in seconds) between SCP-4666 teleport actions.");
             configKnifeThrowCooldown = Config.Bind("SCP-4666", "Knife Throw Cooldown", 10f, "Cooldown (in seconds) before SCP-4666 can throw the knife again.");
             configKnifeReturnCooldown = Config.Bind("SCP-4666", "Knife Return Cooldown", 5f, "Cooldown (in seconds) before SCP-4666 can call the knife back.");
             configKnifeThrowMinDistance = Config.Bind("SCP-4666", "Knife Throw Minimum Distance", 5f, "Minimum distance SCP-4666 can throw the knife.");
-            configKnifeThrowMaxDistance = Config.Bind("SCP-4666", "Knife Throw Maximum Distance", 20f, "Maximum distance SCP-4666 can throw the knife.");
-            configTeleportDistance = Config.Bind("SCP-4666", "Teleport Distance", 15f, "Distance SCP-4666 can teleport.");
-            configDistanceToPickUpKnife = Config.Bind("SCP-4666", "Distance to Pick Up Knife", 15f, "Distance within which SCP-4666 can retrieve the knife if it is dropped by the player");
+            configKnifeThrowMaxDistance = Config.Bind("SCP-4666", "Knife Throw Maximum Distance", 10f, "Maximum distance SCP-4666 can throw the knife.");
+            configTeleportDistance = Config.Bind("SCP-4666", "Teleport Distance", 15f, "Distance SCP-4666 needs to be from the player to allow him to teleport.");
+            //configDistanceToPickUpKnife = Config.Bind("SCP-4666", "Distance to Pick Up Knife", 15f, "Distance within which SCP-4666 can retrieve the knife if it is dropped by the player");
             configSliceDamage = Config.Bind("SCP-4666", "Slice Damage", 25, "Damage dealt by SCP-4666's knife slice.");
             configSlapDamage = Config.Bind("SCP-4666", "Slap Damage", 10, "Damage dealt by SCP-4666's slap attack. (When his knife is stolen)");
             configHitAmountToDropPlayer = Config.Bind("SCP-4666", "Hit Amount to Drop Player", 5, "Number of hits required to make SCP-4666 drop a player.");
@@ -123,7 +123,7 @@ namespace SCP4666
             configRandomSack = Config.Bind("Child Sack", "Random sack", false, "If set to true, instead of reviving all players on team wipe, it will have a 50/50 chance to either revive a player or spawn a present, with 1 player revive guranteed.");
             configMakePlayersChildOnRevive = Config.Bind("Child Sack", "Make Players Child On Revive", true, "Should the players size be changed when being revived by the child sack?");
             configChildMinSize = Config.Bind("Child Sack", "Child Min Size", 0.6f, "Min size to make the player when revived as a child. Default vanilla size of the player is 1.");
-            configChildMaxSize = Config.Bind("Child Sack", "Child Max Size", 0.9f, "Max size to make the player when revived as a child. Default vanilla size of the player is 1.");
+            configChildMaxSize = Config.Bind("Child Sack", "Child Max Size", 0.8f, "Max size to make the player when revived as a child. Default vanilla size of the player is 1.");
 
             // Loading Assets
             string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);

@@ -27,7 +27,7 @@ namespace SCP4666.YulemanKnife
 #pragma warning restore 0649
 
         List<Collider> EntitiesHitByKnife = [];
-        public ThrownKnifeScript thrownKnifeScript;
+        public ThrownKnifeScript? thrownKnifeScript;
 
         // Constants
         readonly Vector3 PositionOffsetStab = new Vector3(-0.2f, 0.26f, -0.02f);

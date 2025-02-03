@@ -7927,8 +7927,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 2165438889
-  InScenePlacedSourceGlobalObjectIdHash: 0
+  GlobalObjectIdHash: 951099334
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
@@ -7945,7 +7944,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 5243766253070352795}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: -223480140, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
+  m_Script: {fileID: -223480140, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   enemyType: {fileID: 11400000, guid: 133b201488d7fb6cfbcd46e1309fc155, type: 2}
@@ -8208,7 +8207,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  UseUnreliableDeltas: 0
   SyncPositionX: 1
   SyncPositionY: 1
   SyncPositionZ: 1
@@ -12844,7 +12842,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 8273702202104001674}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 442677342, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
+  m_Script: {fileID: 442677342, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   grabbable: 0
@@ -12881,7 +12879,7 @@ MonoBehaviour:
   heldByPlayerOnServer: 0
   radarIcon: {fileID: 0}
   reachedFloorTarget: 0
-  grabbableToEnemies: 0
+  grabbableToEnemies: 1
   hasBeenHeld: 0
   KnifeAudio: {fileID: 562487850452520007}
   SliceSFX:

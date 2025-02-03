@@ -395,8 +395,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 2295655106
-  InScenePlacedSourceGlobalObjectIdHash: 0
+  GlobalObjectIdHash: 951099334
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
@@ -413,7 +412,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1536395025649834618}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 442677342, guid: 17c793b009b693b45ba246f19c8f4173, type: 3}
+  m_Script: {fileID: 442677342, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   grabbable: 1
