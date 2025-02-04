@@ -69,7 +69,7 @@ namespace SCP4666.YulemanKnife
 
                 if (Physics.Raycast(transform.position, nextPosition - transform.position, throwForce * Time.fixedDeltaTime, StartOfRound.Instance.collidersAndRoomMask)) // Detect wall
                 {
-                    logger.LogDebug("Knife hit wall, stopping");
+                    log("Knife hit wall, stopping");
                     isThrown = false;
                     StopKnife(true);
                 }
@@ -96,13 +96,13 @@ namespace SCP4666.YulemanKnife
                 return hit.point - transform.forward * offset;
             }
 
-            logger.LogDebug("Couldnt find wall");
+            log("Couldnt find wall");
             return ray.GetPoint(maxThrowDistance);
         }
 
         void StopKnife(bool hitWall)
         {
-            logger.LogDebug("Stopping knife");
+            log("Stopping knife");
             isThrown = false;
             EntitiesHitByKnife.Clear();
 
@@ -147,15 +147,15 @@ namespace SCP4666.YulemanKnife
         {
             if (isThrown)
             {
-                logger.LogDebug("Hit " + other.gameObject.name);
+                log("Hit " + other.gameObject.name);
                 if (!other.transform.TryGetComponent<IHittable>(out var iHit) || EntitiesHitByKnife.Contains(other)) { return; }
-                logger.LogDebug("Hit");
+                log("Hit");
                 Vector3 forward = KnifeTip.transform.forward;
                 if (knifeScript.playerHeldBy != null)
                 {
                     if (other.gameObject.TryGetComponent(out PlayerControllerB player) && player == knifeScript.playerHeldBy) { return; } // TODO: Test this
                     bool hitSuccessful = iHit.Hit(configKnifeHitForce.Value, forward, knifeScript.previousPlayerHeldBy, playHitSFX: true, 5);
-                    if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
+                    if (!hitSuccessful) { log("Hit unsuccessful"); return; }
                 }
                 else
                 {

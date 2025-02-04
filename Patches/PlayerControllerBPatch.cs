@@ -2,6 +2,7 @@
 using HarmonyLib;
 using System;
 using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 using static SCP4666.Plugin;
 
@@ -19,7 +20,7 @@ namespace SCP4666.Patches
                 if (__instance != localPlayer) { return; }
                 PluginInstance.BlackScreenOverlay = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/BlackScreenOverlay.prefab");
                 PluginInstance.BlackScreenOverlay = GameObject.Instantiate(PluginInstance.BlackScreenOverlay);
-                MakePlayerScreenBlack(false);
+                PluginInstance.BlackScreenOverlay.SetActive(false);
             }
             catch (Exception e)
             {
@@ -61,7 +62,7 @@ namespace SCP4666.Patches
                 MakePlayerInvisible(__instance, false);
 
                 if (__instance != localPlayer) { return; }
-                MakePlayerScreenBlack(false);
+                PluginInstance.BlackScreenOverlay.SetActive(false);
                 FreezePlayer(localPlayer, false);
                 if (ChildSackBehavior.localPlayerSizeChangedFromSack)
                 {

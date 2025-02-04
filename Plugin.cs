@@ -34,6 +34,8 @@ namespace SCP4666
 
         // SCP-4666 Configs
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        public static ConfigEntry<bool> configEnableExtendedLogging;
+
         public static ConfigEntry<bool> configEnableSCP4666;
         public static ConfigEntry<string> config4666LevelRarities;
         public static ConfigEntry<string> config4666CustomLevelRarities;
@@ -86,6 +88,8 @@ namespace SCP4666
             InitializeNetworkBehaviours();
 
             // Configs
+
+            configEnableExtendedLogging = Config.Bind("Debugging", "Enable Extended Logging", false, "Shows more logging in the console for debugging/testing");
 
             // SCP-4666 Configs
             configEnableSCP4666 = Config.Bind("SCP-4666", "Enable SCP-4666", true, "Set to false to disable spawning SCP-4666. Use this in combination with configKnifeLevelRarities and configKnifeCustomLevelRarities if you just want to use the knife.");
@@ -250,6 +254,14 @@ namespace SCP4666
             }
         }
 
+        public static void log(string message)
+        {
+            if (configEnableExtendedLogging.Value)
+            {
+                LoggerInstance.LogDebug(message);
+            }
+        }
+
         public static void FreezePlayer(PlayerControllerB player, bool value)
         {
             player.disableInteract = value;
@@ -279,11 +291,6 @@ namespace SCP4666
 
             NavMeshPath path = new();
             return NavMesh.CalculatePath(from, to, -1, path) && Vector3.Distance(path.corners[path.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(to, RoundManager.Instance.navHit, 2.7f)) <= 1.55f; // TODO: Test this
-        }
-
-        public static void MakePlayerScreenBlack(bool value)
-        {
-            PluginInstance.BlackScreenOverlay.SetActive(value);
         }
 
         public static Vector3 GetPositionFrontOfPlayer(PlayerControllerB player, float distance = 1)

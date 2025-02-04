@@ -137,7 +137,7 @@ namespace SCP4666.YulemanKnife
             WalkieTalkie.TransmitOneShotAudio(KnifeAudio, KnifeChargeSFX, 1f);
             RoundManager.Instance.PlayAudibleNoise(playerHeldBy.transform.position, KnifeAudio.maxDistance, 0.5f, 0, playerHeldBy.isInHangarShipRoom);
             isCharged = true;
-            logger.LogDebug("Knife is charged");
+            log("Knife is charged");
         }
 
         void ChargeCancel()
@@ -175,7 +175,7 @@ namespace SCP4666.YulemanKnife
                 for (int i = 0; i < objectsHitByKnifeList.Count; i++)
                 {
                     string layerName = LayerMask.LayerToName(objectsHitByKnifeList[i].transform.gameObject.layer);
-                    logger.LogDebug("Hit " + layerName);
+                    log("Hit " + layerName);
                     if (objectsHitByKnifeList[i].transform.gameObject.layer == 8 || objectsHitByKnifeList[i].transform.gameObject.layer == 11)
                     {
                         hasHitSomething = true;

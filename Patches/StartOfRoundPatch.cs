@@ -15,7 +15,7 @@ namespace SCP4666.Patches
         {
             try
             {
-                MakePlayerScreenBlack(false);
+                PluginInstance.BlackScreenOverlay.SetActive(false);
                 FreezePlayer(localPlayer, false);
             }
             catch (Exception e)

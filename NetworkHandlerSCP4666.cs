@@ -26,15 +26,15 @@ namespace SCP4666
                 if (Instance != null && Instance != this)
                 {
                     Instance.gameObject.GetComponent<NetworkObject>().Despawn();
-                    logger.LogDebug("Despawned network object");
+                    log("Despawned network object");
                 }
             }
 
             hideFlags = HideFlags.HideAndDontSave;
             Instance = this;
-            logger.LogDebug("set instance to this");
+            log("set instance to this");
             base.OnNetworkSpawn();
-            logger.LogDebug("base.OnNetworkSpawn");
+            log("base.OnNetworkSpawn");
         }
 
         public override void OnNetworkDespawn()
@@ -49,7 +49,7 @@ namespace SCP4666
         [ClientRpc]
         private void ChangePlayerSizeClientRpc(ulong clientId, float size)
         {
-            logger.LogDebug("ChangePlayerSizeClientRpc() called");
+            log("ChangePlayerSizeClientRpc() called");
             PlayerControllerB player = PlayerFromId(clientId);
             player.thisPlayerBody.localScale = new Vector3(size, size, size);
         }
@@ -57,7 +57,7 @@ namespace SCP4666
         [ServerRpc(RequireOwnership = false)]
         public void ChangePlayerSizeServerRpc(ulong clientId, float size)
         {
-            logger.LogDebug("ChangePlayerSizeServerRpc() called");
+            log("ChangePlayerSizeServerRpc() called");
             if (!IsServerOrHost) { return; }
             ChangePlayerSizeClientRpc(clientId, size);
         }
@@ -78,18 +78,18 @@ namespace SCP4666
         [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Start))]
         public static void Init()
         {
-            logger.LogDebug("Initializing network prefab...");
+            log("Initializing network prefab...");
             if (networkPrefab != null)
                 return;
 
             if (ModAssets == null) { logger.LogError("Couldnt get ModAssets to create network handler"); return; }
             networkPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab");
-            logger.LogDebug("Got networkPrefab");
+            log("Got networkPrefab");
             //networkPrefab.AddComponent<NetworkHandlerSCP4666>();
-            //logger.LogDebug("Added component");
+            //log("Added component");
 
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
-            logger.LogDebug("Added networkPrefab");
+            log("Added networkPrefab");
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]
@@ -98,9 +98,9 @@ namespace SCP4666
             if (IsServerOrHost)
             {
                 var networkHandlerHost = UnityEngine.Object.Instantiate(networkPrefab, Vector3.zero, Quaternion.identity);
-                logger.LogDebug("Instantiated networkHandlerHost");
+                log("Instantiated networkHandlerHost");
                 networkHandlerHost.GetComponent<NetworkObject>().Spawn();
-                logger.LogDebug("Spawned network object");
+                log("Spawned network object");
             }
         }
     }
