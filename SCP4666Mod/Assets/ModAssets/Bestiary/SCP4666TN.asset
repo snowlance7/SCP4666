@@ -12,17 +12,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e80ae96b3eb9177eea5c8f9dadbcda1, type: 3}
   m_Name: SCP4666TN
   m_EditorClassIdentifier: 
-  displayText: 'The Yuleman
+  displayText: 'Yuleman
 
 
-    Sigurd''s danger level: S+%
+    Sigurd''s danger level: A++
 
 
     Scientific name:
     SCP-4666
 
 
-'
+    It seems that scp 4666 has taken a liking into visiting moons
+    and abducting kids, he seems to only target people who have witnessed him kidnapping
+    a child, if he is not seen he will not attack, but as soon as someone does see
+    him he will start chasing them to the end of the earth to kill them, or if they
+    are a child kidnap them, he is wielding a kind of magical knife he can throw
+    and recall as he pleases, he does also seem to use a kind of teleport ability
+    to confuse his target or to follow them into buildings.
+
+
+    It does seem that
+    it is possible to take him down with enough force, if someone is lucky or skilled
+    enough to take him down they will find his magical knife, and his bag full of
+    kids, they might be useful in case of emergencies.
+
+
+    SCP 4666 is a lethal
+    keter class and should be avoided at any cost -Dr.Emilia'
   terminalEvent: 
   clearPreviousText: 1
   maxCharactersToType: 35
