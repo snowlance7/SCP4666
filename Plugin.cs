@@ -93,8 +93,8 @@ namespace SCP4666
 
             // SCP-4666 Configs
             configEnableSCP4666 = Config.Bind("SCP-4666", "Enable SCP-4666", true, "Set to false to disable spawning SCP-4666. Use this in combination with configKnifeLevelRarities and configKnifeCustomLevelRarities if you just want to use the knife.");
-            config4666LevelRarities = Config.Bind("SCP-4666 Rarities", "Level Rarities", "ExperimentationLevel:5, AssuranceLevel:6, VowLevel:9, OffenseLevel:10, AdamanceLevel:10, MarchLevel:10, RendLevel:75, DineLevel:75, TitanLevel:75, ArtificeLevel:20, EmbrionLevel:25, Modded:15", "Rarities for each level. See default for formatting.");
-            config4666CustomLevelRarities = Config.Bind("SCP-4666 Rarities", "Custom Level Rarities", "Secret LabsLevel:100", "Rarities for modded levels. Same formatting as level rarities.");
+            config4666LevelRarities = Config.Bind("SCP-4666 Rarities", "Level Rarities", "ExperimentationLevel:5, AssuranceLevel:6, VowLevel:9, OffenseLevel:10, AdamanceLevel:20, MarchLevel:10, RendLevel:100, DineLevel:100, TitanLevel:75, ArtificeLevel:20, EmbrionLevel:25", "Rarities for each level. See default for formatting.");
+            config4666CustomLevelRarities = Config.Bind("SCP-4666 Rarities", "Custom Level Rarities", "Secret LabsLevel:100, CrestLevel:100, Winter LodgeLevel:100, SummitLevel:100, PolarusLevel:100, FilitriosLevel:100, MotraLevel:100", "Rarities for modded levels. Same formatting as level rarities.");
 
             configMinPresentCount = Config.Bind("SCP-4666", "Minimum Present Count", 3, "Minimum number of presents spawned by SCP-4666.");
             configMaxPresentCount = Config.Bind("SCP-4666", "Maximum Present Count", 5, "Maximum number of presents spawned by SCP-4666.");
