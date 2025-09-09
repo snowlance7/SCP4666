@@ -12,6 +12,7 @@ using System.Reflection;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Animations.Rigging;
 
 namespace SCP4666
 {
@@ -259,6 +260,15 @@ namespace SCP4666
             if (configEnableExtendedLogging.Value)
             {
                 LoggerInstance.LogDebug(message);
+            }
+        }
+
+        public static void RebuildRig(PlayerControllerB pcb)
+        {
+            if (pcb != null && pcb.playerBodyAnimator != null)
+            {
+                pcb.playerBodyAnimator.WriteDefaultValues();
+                pcb.playerBodyAnimator.GetComponent<RigBuilder>()?.Build();
             }
         }
 

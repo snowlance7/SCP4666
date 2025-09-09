@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <!-- BepInEx Properties -->
     <PropertyGroup>
@@ -50,6 +50,7 @@
       <None Remove="SCP4666Mod\**" />
     </ItemGroup>
     <ItemGroup>
+      <None Remove=".editorconfig" />
       <None Remove=".gitattributes" />
       <None Remove=".gitignore" />
       <None Remove="EnchantedKnifeBehavior.cs~RF123267c.TMP" />
@@ -80,4 +81,13 @@
     <Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
         <Exec Command="dotnet netcode-patch &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
     </Target>
+    <ItemGroup>
+      <EditorConfigFiles Remove="C:\Users\snowl\source\repos\SCP4666\.editorconfig" />
+    </ItemGroup>
+    <ItemGroup>
+      <EditorConfigFiles Remove="C:\Users\snowl\source\repos\SCP4666\.editorconfig" />
+    </ItemGroup>
+    <ItemGroup>
+      <EditorConfigFiles Remove="C:\Users\snowl\source\repos\SCP4666\.editorconfig" />
+    </ItemGroup>
 </Project>
