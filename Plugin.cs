@@ -88,8 +88,60 @@ namespace SCP4666
 
             InitializeNetworkBehaviours();
 
-            // Configs
+            InitConfigs();
 
+            // Loading Assets
+            string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_assets"));
+            if (ModAssets == null)
+            {
+                Logger.LogError($"Failed to load custom assets.");
+                return;
+            }
+            LoggerInstance.LogDebug($"Got AssetBundle at: {Path.Combine(sAssemblyLocation, "scp4666_assets")}");
+
+            Item Knife = ModAssets.LoadAsset<Item>("Assets/ModAssets/Knife/YulemanKnifeItem.asset");
+            if (Knife == null) { LoggerInstance.LogError("Error: Couldnt get YulemanKnifeItem from assets"); return; }
+            LoggerInstance.LogDebug($"Got YulemanKnife prefab");
+            Knife.minValue = configKnifeMinValue.Value;
+            Knife.maxValue = configKnifeMaxValue.Value;
+            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Knife.spawnPrefab);
+            Utilities.FixMixerGroups(Knife.spawnPrefab);
+            LethalLib.Modules.Items.RegisterScrap(Knife);
+
+            Item Sack = ModAssets.LoadAsset<Item>("Assets/ModAssets/Sack/ChildSackItem.asset");
+            if (Sack == null) { LoggerInstance.LogError("Error: Couldnt get ChildSackItem from assets"); return; }
+            LoggerInstance.LogDebug($"Got ChildSack prefab");
+            Sack.minValue = configSackMinValue.Value;
+            Sack.maxValue = configSackMaxValue.Value;
+            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Sack.spawnPrefab);
+            Utilities.FixMixerGroups(Sack.spawnPrefab);
+            LethalLib.Modules.Items.RegisterScrap(Sack);
+
+            EnemyType SCP4666 = ModAssets.LoadAsset<EnemyType>("Assets/ModAssets/Yuleman/SCP4666Enemy.asset");
+            if (SCP4666 == null) { LoggerInstance.LogError("Error: Couldnt get SCP-4666 from assets"); return; }
+            LoggerInstance.LogDebug($"Got SCP-4666 prefab");
+            TerminalNode YulemanTN = ModAssets.LoadAsset<TerminalNode>("Assets/ModAssets/Bestiary/SCP4666TN.asset");
+            TerminalKeyword YulemanTK = ModAssets.LoadAsset<TerminalKeyword>("Assets/ModAssets/Bestiary/SCP4666TK.asset");
+            LoggerInstance.LogDebug("Registering enemy network prefab...");
+            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(SCP4666.enemyPrefab);
+            LoggerInstance.LogDebug("Registering enemy...");
+            Enemies.RegisterEnemy(SCP4666, GetLevelRarities(config4666LevelRarities.Value), GetCustomLevelRarities(config4666CustomLevelRarities.Value), YulemanTN, YulemanTK);
+
+            Item Doll = ModAssets.LoadAsset<Item>("Assets/ModAssets/Doll/FleshDollItem.asset");
+            if (Doll == null) { LoggerInstance.LogError("Error: Couldnt get FleshDollItem from assets"); return; }
+            LoggerInstance.LogDebug($"Got FleshDoll prefab");
+            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Doll.spawnPrefab);
+            Utilities.FixMixerGroups(Doll.spawnPrefab);
+            LethalLib.Modules.Items.RegisterScrap(Doll);
+
+            // Finished
+            Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
+        }
+
+        void InitConfigs()
+        {
             configEnableExtendedLogging = Config.Bind("Debugging", "Enable Extended Logging", false, "Shows more logging in the console for debugging/testing");
 
             // SCP-4666 Configs
@@ -129,58 +181,6 @@ namespace SCP4666
             configMakePlayersChildOnRevive = Config.Bind("Child Sack", "Make Players Child On Revive", true, "Should the players size be changed when being revived by the child sack?");
             configChildMinSize = Config.Bind("Child Sack", "Child Min Size", 0.6f, "Min size to make the player when revived as a child. Default vanilla size of the player is 1.");
             configChildMaxSize = Config.Bind("Child Sack", "Child Max Size", 0.8f, "Max size to make the player when revived as a child. Default vanilla size of the player is 1.");
-
-            // Loading Assets
-            string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-
-            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_assets"));
-            if (ModAssets == null)
-            {
-                Logger.LogError($"Failed to load custom assets.");
-                return;
-            }
-            LoggerInstance.LogDebug($"Got AssetBundle at: {Path.Combine(sAssemblyLocation, "scp4666_assets")}");
-
-            Item Knife = ModAssets.LoadAsset<Item>("Assets/ModAssets/YulemanKnifeItem.asset");
-            if (Knife == null) { LoggerInstance.LogError("Error: Couldnt get YulemanKnifeItem from assets"); return; }
-            LoggerInstance.LogDebug($"Got YulemanKnife prefab");
-
-            Knife.minValue = configKnifeMinValue.Value;
-            Knife.maxValue = configKnifeMaxValue.Value;
-            //Knife.itemSpawnsOnGround = configSpawnKnifeOnGround.Value;
-
-            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Knife.spawnPrefab);
-            Utilities.FixMixerGroups(Knife.spawnPrefab);
-            //LethalLib.Modules.Items.RegisterScrap(Knife, GetLevelRarities(configKnifeLevelRarities.Value), GetCustomLevelRarities(configKnifeCustomLevelRarities.Value));
-            LethalLib.Modules.Items.RegisterScrap(Knife);
-
-            Item Sack = ModAssets.LoadAsset<Item>("Assets/ModAssets/ChildSackItem.asset");
-            if (Sack == null) { LoggerInstance.LogError("Error: Couldnt get ChildSackItem from assets"); return; }
-            LoggerInstance.LogDebug($"Got ChildSack prefab");
-
-            Sack.minValue = configSackMinValue.Value;
-            Sack.maxValue = configSackMaxValue.Value;
-
-            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(Sack.spawnPrefab);
-            Utilities.FixMixerGroups(Sack.spawnPrefab);
-            LethalLib.Modules.Items.RegisterScrap(Sack);
-
-            if (configEnableSCP4666.Value)
-            {
-                EnemyType SCP4666 = ModAssets.LoadAsset<EnemyType>("Assets/ModAssets/SCP4666Enemy.asset");
-                if (SCP4666 == null) { LoggerInstance.LogError("Error: Couldnt get SCP-4666 from assets"); return; }
-                LoggerInstance.LogDebug($"Got SCP-4666 prefab");
-                TerminalNode YulemanTN = ModAssets.LoadAsset<TerminalNode>("Assets/ModAssets/Bestiary/SCP4666TN.asset");
-                TerminalKeyword YulemanTK = ModAssets.LoadAsset<TerminalKeyword>("Assets/ModAssets/Bestiary/SCP4666TK.asset");
-
-                LoggerInstance.LogDebug("Registering enemy network prefab...");
-                LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(SCP4666.enemyPrefab);
-                LoggerInstance.LogDebug("Registering enemy...");
-                Enemies.RegisterEnemy(SCP4666, GetLevelRarities(config4666LevelRarities.Value), GetCustomLevelRarities(config4666CustomLevelRarities.Value), YulemanTN, YulemanTK);
-            }
-
-            // Finished
-            Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
         }
 
         public Dictionary<Levels.LevelTypes, int> GetLevelRarities(string levelsString)

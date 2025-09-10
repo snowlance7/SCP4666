@@ -1,15 +1,15 @@
 ManifestFileVersion: 0
-CRC: 1188916570
+CRC: 3061331496
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: d3f1a14933257d194fa75cbd6ae2a689
+    Hash: ecadb041a73350afe18528ca00fe641e
   TypeTreeHash:
     serializedVersion: 2
-    Hash: 46e886112e1d72f50dd6430552f2ce14
+    Hash: 6a75883982ce839136c5c9f01ec3625c
   IncrementalBuildHash:
     serializedVersion: 2
-    Hash: d3f1a14933257d194fa75cbd6ae2a689
+    Hash: ecadb041a73350afe18528ca00fe641e
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -80,6 +80,8 @@ ClassTypes:
   Script: {fileID: 442677342, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 114
   Script: {fileID: 11500000, guid: d3cecf05b78b173605122a700874719c, type: 3}
+- Class: 114
+  Script: {fileID: 1220266453, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 115
   Script: {instanceID: 0}
 - Class: 137
@@ -117,10 +119,11 @@ SerializeReferenceClassIdentifiers:
   ClassName: UnityEngine.UI.MaskableGraphic/CullStateChangedEvent
 Assets:
 - Assets/ModAssets/BlackScreenOverlay.prefab
-- Assets/ModAssets/SCP4666Enemy.asset
-- Assets/ModAssets/Bestiary/SCP4666TK.asset
+- Assets/ModAssets/Yuleman/SCP4666Enemy.asset
+- Assets/ModAssets/Doll/FleshDollItem.asset
+- Assets/ModAssets/Yuleman/Bestiary/SCP4666TK.asset
 - Assets/ModAssets/NetworkHandlerSCP4666.prefab
-- Assets/ModAssets/YulemanKnifeItem.asset
-- Assets/ModAssets/ChildSackItem.asset
-- Assets/ModAssets/Bestiary/SCP4666TN.asset
+- Assets/ModAssets/Knife/YulemanKnifeItem.asset
+- Assets/ModAssets/Sack/ChildSackItem.asset
+- Assets/ModAssets/Yuleman/Bestiary/SCP4666TN.asset
 Dependencies: []
