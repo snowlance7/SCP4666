@@ -39,7 +39,7 @@ namespace SCP4666.Patches
                 LoggerInstance.LogDebug("Sack found, attempting to stop ship leave and activating");
                 StartOfRound.Instance.allPlayersDead = false;
 
-                if (!IsServerOrHost) { return false; } // TODO: Test this
+                if (!IsServer) { return false; } // TODO: Test this
 
                 sack.Activate();
 

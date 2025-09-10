@@ -81,7 +81,7 @@ namespace SCP4666
             mainEntrancePosition = RoundManager.FindMainEntrancePosition();
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(false, true);
 
-            if (IsServerOrHost)
+            if (IsServer)
             {
                 int num = UnityEngine.Random.Range(configMinPresentCount.Value, configMaxPresentCount.Value + 1);
                 SpawnPresents(num);
@@ -94,7 +94,7 @@ namespace SCP4666
             if (Instance != null && Instance != this)
             {
                 log("There is already a SCP-4666 in the scene. Removing this one.");
-                if (!IsServerOrHost) { return; }
+                if (!IsServer) { return; }
                 NetworkObject.Despawn(true);
                 return;
             }
@@ -481,7 +481,7 @@ namespace SCP4666
 
             MakeKnifeInvisible();
 
-            if (IsServerOrHost && !daytimeEnemyLeaving)
+            if (IsServer && !daytimeEnemyLeaving)
             {
                 // Spawn YulemanKnife
                 YulemanKnifeBehavior newKnife = GameObject.Instantiate(YulemanKnifePrefab, RightHandTransform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<YulemanKnifeBehavior>();
@@ -743,7 +743,7 @@ namespace SCP4666
             MakeKnifeInvisible();
             //inSpecialAnimation = false;
 
-            if (!IsServerOrHost) { return; }
+            if (!IsServer) { return; }
             ThrowKnifeClientRpc(targetPlayer.actualClientId);
         }
 
@@ -810,7 +810,7 @@ namespace SCP4666
         public void FinishStartAnimation() // Synced
         {
             log("In FinishStartAnimation()");
-            if (IsServerOrHost)
+            if (IsServer)
             {
                 SwitchToBehaviourClientRpc((int)State.Chasing);
             }
@@ -861,7 +861,7 @@ namespace SCP4666
         [ServerRpc(RequireOwnership = false)]
         public void DoAnimationServerRpc(string animationName)
         {
-            if (!IsServerOrHost) { return; }
+            if (!IsServer) { return; }
             log("Doing " + animationName + " animation");
             networkAnimator.SetTrigger(animationName);
         }
@@ -881,7 +881,7 @@ namespace SCP4666
         [ServerRpc(RequireOwnership = false)]
         public void GrabPlayerServerRpc(ulong clientId)
         {
-            if (!IsServerOrHost) { return; }
+            if (!IsServer) { return; }
             inSpecialAnimation = true;
             //targetPlayer = PlayerFromId(clientId);
             //inSpecialAnimationWithPlayer = targetPlayer;
@@ -905,7 +905,7 @@ namespace SCP4666
         [ServerRpc(RequireOwnership = false)]
         public void AddTargetPlayerServerRpc(ulong clientId)
         {
-            if (IsServerOrHost)
+            if (IsServer)
             {
                 PlayerControllerB player = PlayerFromId(clientId);
 

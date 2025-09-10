@@ -21,7 +21,7 @@ namespace SCP4666
 
         public override void OnNetworkSpawn()
         {
-            if (IsServerOrHost)
+            if (IsServer)
             {
                 if (Instance != null && Instance != this)
                 {
@@ -59,7 +59,7 @@ namespace SCP4666
         public void ChangePlayerSizeServerRpc(ulong clientId, float size)
         {
             log("ChangePlayerSizeServerRpc() called");
-            if (!IsServerOrHost) { return; }
+            if (!IsServer) { return; }
             ChangePlayerSizeClientRpc(clientId, size);
         }
 
@@ -96,7 +96,7 @@ namespace SCP4666
         [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]
         static void SpawnNetworkHandler()
         {
-            if (IsServerOrHost)
+            if (IsServer)
             {
                 var networkHandlerHost = UnityEngine.Object.Instantiate(networkPrefab, Vector3.zero, Quaternion.identity);
                 log("Instantiated networkHandlerHost");
