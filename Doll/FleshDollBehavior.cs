@@ -7,12 +7,16 @@ using static SCP4666.Plugin;
 
 namespace SCP4666
 {
-    public class FleshDollBehavior : StunGrenadeItem
+    public class FleshDollBehavior : PhysicsProp
     {
         private static ManualLogSource logger = LoggerInstance;
 
         public NavMeshAgent agent;
         public Transform HoldItemPosition;
+        public Animator itemAnimator;
+        public AnimationCurve grenadeFallCurve;
+        public AnimationCurve grenadeVerticalFallCurve;
+        public AnimationCurve grenadeVerticalFallCurveNoBounce;
 
         public Vector3 destination;
         NavMeshPath navmeshPath = new NavMeshPath();
@@ -24,6 +28,9 @@ namespace SCP4666
 
         bool isThrown;
         bool landing;
+        Ray grenadeThrowRay;
+        RaycastHit grenadeHit;
+        int stunGrenadeMask = 268437761;
 
         public override void GrabItem()
         {
@@ -62,7 +69,10 @@ namespace SCP4666
                 {
                     timeSinceIntervalUpdate = 0f;
 
+                    if (heldItem != null)
+                    {
 
+                    }
                 }
             }
 
@@ -75,7 +85,23 @@ namespace SCP4666
 
         public override void LateUpdate()
         {
-            base.LateUpdate();
+            if (parentObject != null)
+            {
+                base.transform.rotation = parentObject.rotation;
+                base.transform.Rotate(itemProperties.rotationOffset);
+                base.transform.position = parentObject.position;
+                Vector3 positionOffset = itemProperties.positionOffset;
+                positionOffset = parentObject.rotation * positionOffset;
+                base.transform.position += positionOffset;
+            }
+            if (rotateObject)
+            {
+                base.transform.Rotate(new Vector3(0f, Time.deltaTime * 60f, 0f), Space.World);
+            }
+            if (radarIcon != null)
+            {
+                radarIcon.position = base.transform.position;
+            }
 
             if (heldItem != null)
             {
@@ -128,6 +154,113 @@ namespace SCP4666
             landing = false;
         }
 
+        public override void FallWithCurve()
+        {
+            float magnitude = (startFallingPosition - targetFloorPosition).magnitude;
+            base.transform.rotation = Quaternion.Lerp(base.transform.rotation, Quaternion.Euler(itemProperties.restingRotation.x, base.transform.eulerAngles.y, itemProperties.restingRotation.z), 14f * Time.deltaTime / magnitude);
+            base.transform.localPosition = Vector3.Lerp(startFallingPosition, targetFloorPosition, grenadeFallCurve.Evaluate(fallTime));
+            if (magnitude > 5f)
+            {
+                base.transform.localPosition = Vector3.Lerp(new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z), new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z), grenadeVerticalFallCurveNoBounce.Evaluate(fallTime));
+            }
+            else
+            {
+                base.transform.localPosition = Vector3.Lerp(new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z), new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z), grenadeVerticalFallCurve.Evaluate(fallTime));
+            }
+            fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
+        }
+
+        /*public override void FallWithCurve() // Coin version
+        {
+            // Log initial state
+            logIfDebug($"cFallWithCurve called. Start Position: {startFallingPosition}, Target Position: {targetFloorPosition}, Initial cfallTime: {fallTime}");
+
+            float magnitude = (startFallingPosition - targetFloorPosition).magnitude;
+            logIfDebug($"Calculated magnitude: {magnitude}");
+
+            // Log rotation interpolation
+            Quaternion targetRotation = Quaternion.Euler(itemProperties.restingRotation.x, base.transform.eulerAngles.y, itemProperties.restingRotation.z);
+            base.transform.rotation = Quaternion.Lerp(base.transform.rotation, targetRotation, 14f * Time.deltaTime / magnitude);
+            logIfDebug($"Updated rotation to: {base.transform.rotation.eulerAngles}");
+
+            // Log position interpolation for primary fall
+            base.transform.localPosition = Vector3.Lerp(startFallingPosition, targetFloorPosition, grenadeFallCurve.Evaluate(fallTime));
+            logIfDebug($"Updated primary fall position to: {base.transform.localPosition}");
+
+            // Conditional logging for vertical fall curve
+            if (magnitude > 5f)
+            {
+                logIfDebug("Magnitude > 5, using grenadeVerticalFallCurveNoBounce.");
+                base.transform.localPosition = Vector3.Lerp(
+                    new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z),
+                    new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z),
+                    grenadeVerticalFallCurveNoBounce.Evaluate(fallTime)
+                );
+            }
+            else
+            {
+                logIfDebug("Magnitude <= 5, using grenadeVerticalFallCurve.");
+                base.transform.localPosition = Vector3.Lerp(
+                    new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z),
+                    new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z),
+                    grenadeVerticalFallCurve.Evaluate(fallTime)
+                );
+            }
+
+            // Log updated position and fallTime
+            logIfDebug($"Updated local position after vertical fall: {base.transform.localPosition}");
+
+            fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
+            logIfDebug($"Updated cfallTime to: {fallTime}");
+        }*/
+
+        /*public Vector3 GetGrenadeThrowDestination(Transform ejectPoint, float _throwDistance = 10f)
+        {
+            Vector3 position = base.transform.position;
+            grenadeThrowRay = new Ray(ejectPoint.position, ejectPoint.forward);
+
+            // Adjusted throw distance
+            if (!Physics.Raycast(grenadeThrowRay, out grenadeHit, _throwDistance, stunGrenadeMask, QueryTriggerInteraction.Ignore))
+            {
+                position = grenadeThrowRay.GetPoint(_throwDistance - 2f); // Adjust target point
+            }
+            else
+            {
+                position = grenadeThrowRay.GetPoint(grenadeHit.distance - 0.05f);
+            }
+
+            // Second raycast downward to find the ground
+            grenadeThrowRay = new Ray(position, Vector3.down);
+            if (Physics.Raycast(grenadeThrowRay, out grenadeHit, 30f, stunGrenadeMask, QueryTriggerInteraction.Ignore))
+            {
+                position = grenadeHit.point + Vector3.up * 0.05f;
+            }
+            else
+            {
+                position = grenadeThrowRay.GetPoint(30f);
+            }
+
+            // Add randomness
+            position += new Vector3(UnityEngine.Random.Range(-1f, 1f), 0f, UnityEngine.Random.Range(-1f, 1f));
+
+            return position;
+        }*/
+
+        public Vector3 GetGrenadeThrowDestination()
+        {
+            Vector3 position = base.transform.position;
+            Debug.DrawRay(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward, Color.yellow, 15f);
+            grenadeThrowRay = new Ray(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward);
+            position = ((!Physics.Raycast(grenadeThrowRay, out grenadeHit, 12f, stunGrenadeMask, QueryTriggerInteraction.Ignore)) ? grenadeThrowRay.GetPoint(10f) : grenadeThrowRay.GetPoint(grenadeHit.distance - 0.05f));
+            Debug.DrawRay(position, Vector3.down, Color.blue, 15f);
+            grenadeThrowRay = new Ray(position, Vector3.down);
+            if (Physics.Raycast(grenadeThrowRay, out grenadeHit, 30f, stunGrenadeMask, QueryTriggerInteraction.Ignore))
+            {
+                return grenadeHit.point + Vector3.up * 0.05f;
+            }
+            return grenadeThrowRay.GetPoint(30f);
+        }
+
         GrabbableObject? GetClosestItem(float maxDistance)
         {
             HoarderBugAI.RefreshGrabbableObjectsInMapList();
@@ -176,6 +309,7 @@ namespace SCP4666
             heldItem.EnablePhysics(false);
             HoarderBugAI.grabbableObjectsInMap.Remove(heldItem.gameObject);
             grabbable = false;
+            itemAnimator.SetTrigger("carry");
         }
     }
 }
