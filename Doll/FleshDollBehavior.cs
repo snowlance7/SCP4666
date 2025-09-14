@@ -7,56 +7,50 @@ using static SCP4666.Plugin;
 
 namespace SCP4666
 {
-    public class FleshDollBehavior : PhysicsProp
+    public class FleshDollBehavior : StunGrenadeItem
     {
         private static ManualLogSource logger = LoggerInstance;
 
         public NavMeshAgent agent;
         public Transform HoldItemPosition;
-        public Animator itemAnimator;
-        public AnimationCurve grenadeFallCurve;
-        public AnimationCurve grenadeVerticalFallCurve;
-        public AnimationCurve grenadeVerticalFallCurveNoBounce;
+        public Collider collider;
 
         public Vector3 destination;
-        NavMeshPath navmeshPath = new NavMeshPath();
+        NavMeshPath path1 = new NavMeshPath();
 
         const float AIIntervalTime = 0.2f;
         float timeSinceIntervalUpdate;
 
-        GrabbableObject? heldItem;
+        GrabbableObject? heldObject;
 
         bool isThrown;
         bool landing;
-        Ray grenadeThrowRay;
-        RaycastHit grenadeHit;
-        int stunGrenadeMask = 268437761;
 
-        public override void GrabItem()
-        {
-            base.GrabItem();
-        }
-
-        public override void DiscardItem()
-        {
-            base.DiscardItem();
-        }
+        bool isInsideFactory;
+        Vector3 mainEntranceInsidePosition;
+        Vector3 mainEntranceOutsidePosition;
+        Vector3 shipNode = StartOfRound.Instance.insideShipPositions[5].position;
 
         public override void Update()
         {
-            /*if (IsServer && !isHeld && !base.IsOwner)
+            if (heldObject != null && heldObject.playerHeldBy != null && IsServer) // TODO: Need to handle player grabbing item back from doll, test this
             {
-                GetComponent<NetworkObject>().RemoveOwnership();
-            }*/
+                DropItemClientRpc(transform.position);
+                return;
+            }
+            if (playerHeldBy != null)
+            {
+                isInsideFactory = playerHeldBy.isInsideFactory;
+            }
             if (StartOfRound.Instance.currentLevel.spawnEnemiesAndScrap)
             {
                 agent.enabled = !isHeld && reachedFloorTarget && fallTime >= 1f;
-                if (fallTime >= 1f && !reachedFloorTarget)
+                /*if (fallTime >= 1f && !reachedFloorTarget)
                 {
                     targetFloorPosition = base.transform.position;
                     destination = base.transform.position;
                     agent.enabled = true;
-                }
+                }*/
             }
             if (isHeld || !reachedFloorTarget || fallTime < 1f || isInElevator)
             {
@@ -69,9 +63,31 @@ namespace SCP4666
                 {
                     timeSinceIntervalUpdate = 0f;
 
-                    if (heldItem != null)
+                    if (heldObject != null)
                     {
-
+                        if (isInsideFactory)
+                        {
+                            if (!SetDestinationToPosition(mainEntranceInsidePosition, true))
+                            {
+                                logger.LogDebug("No path to main entrance position");
+                                DropItemClientRpc(transform.position);
+                                return;
+                            }
+                            if (Vector3.Distance(transform.position, mainEntranceInsidePosition) < 1f)
+                            {
+                                Teleport(mainEntranceOutsidePosition, false);
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            if (!SetDestinationToPosition(shipNode, true) || Vector3.Distance(transform.position, shipNode) < 1f)
+                            {
+                                logger.LogDebug("No path to ship node from outside");
+                                DropItemClientRpc(transform.position);
+                                return;
+                            }
+                        }
                     }
                 }
             }
@@ -81,6 +97,14 @@ namespace SCP4666
                 landing = true;
                 itemAnimator.SetTrigger("land");
             }
+        }
+
+        public void Teleport(Vector3 position, bool _isInsideFactory)
+        {
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
+            if (IsServer) { agent.Warp(position); }
+            transform.position = position;
+            isInsideFactory = _isInsideFactory;
         }
 
         public override void LateUpdate()
@@ -94,39 +118,16 @@ namespace SCP4666
                 positionOffset = parentObject.rotation * positionOffset;
                 base.transform.position += positionOffset;
             }
-            if (rotateObject)
-            {
-                base.transform.Rotate(new Vector3(0f, Time.deltaTime * 60f, 0f), Space.World);
-            }
             if (radarIcon != null)
             {
                 radarIcon.position = base.transform.position;
             }
-
-            if (heldItem != null)
+            if (heldObject != null)
             {
-                heldItem.transform.position = HoldItemPosition.position;
+                heldObject.transform.position = HoldItemPosition.position;
             }
-        }
 
-        public void SetDestinationToPosition(Vector3 position, bool checkForPath = false)
-        {
-            if (checkForPath)
-            {
-                position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 1.75f);
-                if (!agent.CalculatePath(position, navmeshPath))
-                {
-                    Debug.Log(base.gameObject.name + " calculatepath returned false.");
-                    return;
-                }
-                if (Vector3.Distance(navmeshPath.corners[navmeshPath.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 2.7f)) > 1.55f)
-                {
-                    Debug.Log(base.gameObject.name + " path calculation went wrong.");
-                    return;
-                }
-            }
-            destination = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, -1f);
-            agent.SetDestination(destination);
+            itemAnimator.SetBool("sit", isHeld && playerHeldBy == null);
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true) // Synced
@@ -140,131 +141,57 @@ namespace SCP4666
             isThrown = true;
         }
 
+        public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
+        {
+            if (checkForPath)
+            {
+                position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 1.75f);
+                path1 = new NavMeshPath();
+                if (!agent.CalculatePath(position, path1))
+                {
+                    return false;
+                }
+                if (Vector3.Distance(path1.corners[path1.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 2.7f)) > 1.55f)
+                {
+                    return false;
+                }
+            }
+
+            //moveTowardsDestination = true;
+            destination = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, -1f);
+            agent.SetDestination(destination);
+            return true;
+        }
+
         public override void OnHitGround()
         {
-            if (IsServer && isThrown)
-            {
-                heldItem = GetClosestItem(1f);
-                if (heldItem == null) { return; }
+            logger.LogDebug("OnHitGround");
 
-                GrabItemClientRpc(heldItem.NetworkObject);
+            if (IsServer && isThrown && StartOfRound.Instance.shipHasLanded)
+            {
+                heldObject = GetClosestItem(1f);
+                if (heldObject == null) { logger.LogDebug("Cant find item to grab"); return; }
+
+                if (isInsideFactory)
+                {
+                    mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: false);
+                    if (!Utils.CalculatePath(transform.position, mainEntranceInsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
+                }
+                else
+                {
+                    mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: true);
+                    if (!Utils.CalculatePath(transform.position, mainEntranceOutsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
+                }
+                GrabItemClientRpc(heldObject.NetworkObject);
             }
 
             isThrown = false;
             landing = false;
         }
 
-        public override void FallWithCurve()
-        {
-            float magnitude = (startFallingPosition - targetFloorPosition).magnitude;
-            base.transform.rotation = Quaternion.Lerp(base.transform.rotation, Quaternion.Euler(itemProperties.restingRotation.x, base.transform.eulerAngles.y, itemProperties.restingRotation.z), 14f * Time.deltaTime / magnitude);
-            base.transform.localPosition = Vector3.Lerp(startFallingPosition, targetFloorPosition, grenadeFallCurve.Evaluate(fallTime));
-            if (magnitude > 5f)
-            {
-                base.transform.localPosition = Vector3.Lerp(new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z), new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z), grenadeVerticalFallCurveNoBounce.Evaluate(fallTime));
-            }
-            else
-            {
-                base.transform.localPosition = Vector3.Lerp(new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z), new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z), grenadeVerticalFallCurve.Evaluate(fallTime));
-            }
-            fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
-        }
-
-        /*public override void FallWithCurve() // Coin version
-        {
-            // Log initial state
-            logIfDebug($"cFallWithCurve called. Start Position: {startFallingPosition}, Target Position: {targetFloorPosition}, Initial cfallTime: {fallTime}");
-
-            float magnitude = (startFallingPosition - targetFloorPosition).magnitude;
-            logIfDebug($"Calculated magnitude: {magnitude}");
-
-            // Log rotation interpolation
-            Quaternion targetRotation = Quaternion.Euler(itemProperties.restingRotation.x, base.transform.eulerAngles.y, itemProperties.restingRotation.z);
-            base.transform.rotation = Quaternion.Lerp(base.transform.rotation, targetRotation, 14f * Time.deltaTime / magnitude);
-            logIfDebug($"Updated rotation to: {base.transform.rotation.eulerAngles}");
-
-            // Log position interpolation for primary fall
-            base.transform.localPosition = Vector3.Lerp(startFallingPosition, targetFloorPosition, grenadeFallCurve.Evaluate(fallTime));
-            logIfDebug($"Updated primary fall position to: {base.transform.localPosition}");
-
-            // Conditional logging for vertical fall curve
-            if (magnitude > 5f)
-            {
-                logIfDebug("Magnitude > 5, using grenadeVerticalFallCurveNoBounce.");
-                base.transform.localPosition = Vector3.Lerp(
-                    new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z),
-                    new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z),
-                    grenadeVerticalFallCurveNoBounce.Evaluate(fallTime)
-                );
-            }
-            else
-            {
-                logIfDebug("Magnitude <= 5, using grenadeVerticalFallCurve.");
-                base.transform.localPosition = Vector3.Lerp(
-                    new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z),
-                    new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z),
-                    grenadeVerticalFallCurve.Evaluate(fallTime)
-                );
-            }
-
-            // Log updated position and fallTime
-            logIfDebug($"Updated local position after vertical fall: {base.transform.localPosition}");
-
-            fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
-            logIfDebug($"Updated cfallTime to: {fallTime}");
-        }*/
-
-        /*public Vector3 GetGrenadeThrowDestination(Transform ejectPoint, float _throwDistance = 10f)
-        {
-            Vector3 position = base.transform.position;
-            grenadeThrowRay = new Ray(ejectPoint.position, ejectPoint.forward);
-
-            // Adjusted throw distance
-            if (!Physics.Raycast(grenadeThrowRay, out grenadeHit, _throwDistance, stunGrenadeMask, QueryTriggerInteraction.Ignore))
-            {
-                position = grenadeThrowRay.GetPoint(_throwDistance - 2f); // Adjust target point
-            }
-            else
-            {
-                position = grenadeThrowRay.GetPoint(grenadeHit.distance - 0.05f);
-            }
-
-            // Second raycast downward to find the ground
-            grenadeThrowRay = new Ray(position, Vector3.down);
-            if (Physics.Raycast(grenadeThrowRay, out grenadeHit, 30f, stunGrenadeMask, QueryTriggerInteraction.Ignore))
-            {
-                position = grenadeHit.point + Vector3.up * 0.05f;
-            }
-            else
-            {
-                position = grenadeThrowRay.GetPoint(30f);
-            }
-
-            // Add randomness
-            position += new Vector3(UnityEngine.Random.Range(-1f, 1f), 0f, UnityEngine.Random.Range(-1f, 1f));
-
-            return position;
-        }*/
-
-        public Vector3 GetGrenadeThrowDestination()
-        {
-            Vector3 position = base.transform.position;
-            Debug.DrawRay(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward, Color.yellow, 15f);
-            grenadeThrowRay = new Ray(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward);
-            position = ((!Physics.Raycast(grenadeThrowRay, out grenadeHit, 12f, stunGrenadeMask, QueryTriggerInteraction.Ignore)) ? grenadeThrowRay.GetPoint(10f) : grenadeThrowRay.GetPoint(grenadeHit.distance - 0.05f));
-            Debug.DrawRay(position, Vector3.down, Color.blue, 15f);
-            grenadeThrowRay = new Ray(position, Vector3.down);
-            if (Physics.Raycast(grenadeThrowRay, out grenadeHit, 30f, stunGrenadeMask, QueryTriggerInteraction.Ignore))
-            {
-                return grenadeHit.point + Vector3.up * 0.05f;
-            }
-            return grenadeThrowRay.GetPoint(30f);
-        }
-
         GrabbableObject? GetClosestItem(float maxDistance)
         {
             HoarderBugAI.RefreshGrabbableObjectsInMapList();
-
             float closestDistance = maxDistance;
             GrabbableObject? closestItem = null;
 
@@ -281,6 +208,15 @@ namespace SCP4666
             }
 
             return closestItem;
+        }
+
+        public override void GrabItemFromEnemy(EnemyAI enemy)
+        {
+            base.GrabItemFromEnemy(enemy);
+            if (heldObject != null && IsServer)
+            {
+                DropItemClientRpc(transform.position);
+            }
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -302,14 +238,42 @@ namespace SCP4666
             if (!netRef.TryGet(out NetworkObject netObj)) { logger.LogError("Couldnt get netObj from NetworkObjectReference in GrabItemClientRpc"); return; }
             if (!netObj.TryGetComponent(out GrabbableObject grabObj)) { logger.LogError("Couldnt get GrabbableObject from NetworkObject in GrabItemClientRpc"); return; }
 
-            heldItem = grabObj;
-            heldItem.parentObject = HoldItemPosition;
-            heldItem.hasHitGround = false;
-            heldItem.isHeldByEnemy = true;
-            heldItem.EnablePhysics(false);
-            HoarderBugAI.grabbableObjectsInMap.Remove(heldItem.gameObject);
+            heldObject = grabObj;
+            heldObject.parentObject = HoldItemPosition;
+            heldObject.hasHitGround = false;
+            heldObject.GrabItemFromEnemy(null);
+            heldObject.isHeldByEnemy = true;
+            heldObject.EnablePhysics(false);
+            HoarderBugAI.grabbableObjectsInMap.Remove(heldObject.gameObject);
             grabbable = false;
+            collider.enabled = false;
             itemAnimator.SetTrigger("carry");
+        }
+
+        [ClientRpc]
+        public void DropItemClientRpc(Vector3 targetFloorPosition)
+        {
+            if (heldObject == null)
+            {
+                return;
+            }
+            GrabbableObject itemGrabbableObject = heldObject;
+            itemGrabbableObject.parentObject = null;
+            itemGrabbableObject.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
+            itemGrabbableObject.EnablePhysics(enable: true);
+            itemGrabbableObject.fallTime = 0f;
+            itemGrabbableObject.startFallingPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(itemGrabbableObject.transform.position);
+            itemGrabbableObject.targetFloorPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(targetFloorPosition);
+            itemGrabbableObject.floorYRot = -1;
+            itemGrabbableObject.DiscardItemFromEnemy();
+            itemGrabbableObject.isHeldByEnemy = false;
+            HoarderBugAI.grabbableObjectsInMap.Add(itemGrabbableObject.gameObject);
+
+            
+            heldObject = null;
+            grabbable = true;
+            collider.enabled = true;
+            itemAnimator.SetTrigger("idle");
         }
     }
 }

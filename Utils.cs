@@ -369,6 +369,30 @@ namespace SCP4666
             return targetVent;
         }
 
+        public static GameObject SpawnDebugCube(Vector3 position, Color color, float size = 1f)
+        {
+            // Create a cube primitive
+            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+            // Set position and scale
+            cube.transform.position = position;
+            cube.transform.localScale = Vector3.one * size;
+
+            // Give it a simple material and color
+            var renderer = cube.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.material = new Material(Shader.Find("Unlit/Color"));
+                renderer.material.color = color;
+            }
+
+            // (Optional) Mark as editor-only so it doesn’t get left behind in builds
+            cube.name = $"DebugCube_{position}";
+            GameObject.Destroy(cube.GetComponent<Collider>()); // remove collider if not needed
+
+            return cube;
+        }
+
         public static bool CalculatePath(Vector3 fromPos, Vector3 toPos)
         {
             Vector3 from = RoundManager.Instance.GetNavMeshPosition(fromPos, RoundManager.Instance.navHit, 1.75f);

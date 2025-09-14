@@ -51,13 +51,15 @@ MonoBehaviour:
   syncInteractLRFunction: 0
   saveItemVariable: 0
   isDefensiveWeapon: 0
-  toolTips: []
+  toolTips:
+  - 
+  - 
   verticalOffset: 0
   floorYOffset: 0
   allowDroppingAheadOfPlayer: 0
   restingRotation: {x: 0, y: 0, z: 0}
-  rotationOffset: {x: 0, y: 0, z: 0}
-  positionOffset: {x: 0, y: 0, z: 0}
+  rotationOffset: {x: 90, y: 90, z: 0}
+  positionOffset: {x: -0.25, y: 0.05, z: -0.1}
   meshOffset: 0
   meshVariants: []
   materialVariants: []

@@ -29,7 +29,7 @@ namespace SCP4666
         {
             if (!Utils.testing) { return; }
 
-
+            Utils.SpawnDebugCube(StartOfRound.Instance.insideShipPositions[5].position, Color.red);
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SubmitChat_performed))]
