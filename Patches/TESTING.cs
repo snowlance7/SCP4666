@@ -1,5 +1,7 @@
 using BepInEx.Logging;
 using HarmonyLib;
+using SCP4666.YulemanKnife;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Diagnostics;
 using static SCP4666.Plugin;
@@ -29,7 +31,6 @@ namespace SCP4666
         {
             if (!Utils.testing) { return; }
 
-            Utils.SpawnDebugCube(StartOfRound.Instance.insideShipPositions[5].position, Color.red);
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SubmitChat_performed))]

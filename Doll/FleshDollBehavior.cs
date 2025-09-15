@@ -1,4 +1,5 @@
 ﻿using BepInEx.Logging;
+using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
@@ -7,13 +8,20 @@ using static SCP4666.Plugin;
 
 namespace SCP4666
 {
-    public class FleshDollBehavior : StunGrenadeItem
+    public class FleshDollBehavior : PhysicsProp
     {
         private static ManualLogSource logger = LoggerInstance;
 
         public NavMeshAgent agent;
         public Transform HoldItemPosition;
         public Collider collider;
+        public Animator itemAnimator;
+
+        public AnimationCurve grenadeFallCurve;
+        public AnimationCurve grenadeVerticalFallCurveNoBounce;
+        public AnimationCurve grenadeVerticalFallCurve;
+
+        static HashSet<FleshDollBehavior> Dolls = [];
 
         public Vector3 destination;
         NavMeshPath path1 = new NavMeshPath();
@@ -29,10 +37,32 @@ namespace SCP4666
         bool isInsideFactory;
         Vector3 mainEntranceInsidePosition;
         Vector3 mainEntranceOutsidePosition;
-        Vector3 shipNode = StartOfRound.Instance.insideShipPositions[5].position;
+        Ray grenadeThrowRay;
+        RaycastHit grenadeHit;
+        const int stunGrenadeMask = 268437761;
+
+        Vector3 shipNode => StartOfRound.Instance.insideShipPositions[5].position;
+
+        public override void Start()
+        {
+            base.Start();
+
+            Dolls.Add(this);
+        }
+
+        public override void OnDestroy()
+        {
+            Dolls.Remove(this);
+            base.OnDestroy();
+        }
 
         public override void Update()
         {
+            if (isThrown && fallTime > 0.75 && !landing)
+            {
+                landing = true;
+                itemAnimator.SetTrigger("land");
+            }
             if (heldObject != null && heldObject.playerHeldBy != null && IsServer) // TODO: Need to handle player grabbing item back from doll, test this
             {
                 DropItemClientRpc(transform.position);
@@ -91,12 +121,6 @@ namespace SCP4666
                     }
                 }
             }
-
-            if (isThrown && fallTime > 0.75 && !landing)
-            {
-                landing = true;
-                itemAnimator.SetTrigger("land");
-            }
         }
 
         public void Teleport(Vector3 position, bool _isInsideFactory)
@@ -141,6 +165,37 @@ namespace SCP4666
             isThrown = true;
         }
 
+        public Vector3 GetGrenadeThrowDestination()
+        {
+            Vector3 position = base.transform.position;
+            Debug.DrawRay(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward, Color.yellow, 15f);
+            grenadeThrowRay = new Ray(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward);
+            position = ((!Physics.Raycast(grenadeThrowRay, out grenadeHit, 12f, stunGrenadeMask, QueryTriggerInteraction.Ignore)) ? grenadeThrowRay.GetPoint(10f) : grenadeThrowRay.GetPoint(grenadeHit.distance - 0.05f));
+            Debug.DrawRay(position, Vector3.down, Color.blue, 15f);
+            grenadeThrowRay = new Ray(position, Vector3.down);
+            if (Physics.Raycast(grenadeThrowRay, out grenadeHit, 30f, stunGrenadeMask, QueryTriggerInteraction.Ignore))
+            {
+                return grenadeHit.point + Vector3.up * 0.05f;
+            }
+            return grenadeThrowRay.GetPoint(30f);
+        }
+
+        public override void FallWithCurve()
+        {
+            float magnitude = (startFallingPosition - targetFloorPosition).magnitude;
+            base.transform.rotation = Quaternion.Lerp(base.transform.rotation, Quaternion.Euler(itemProperties.restingRotation.x, base.transform.eulerAngles.y, itemProperties.restingRotation.z), 14f * Time.deltaTime / magnitude);
+            base.transform.localPosition = Vector3.Lerp(startFallingPosition, targetFloorPosition, grenadeFallCurve.Evaluate(fallTime));
+            if (magnitude > 5f)
+            {
+                base.transform.localPosition = Vector3.Lerp(new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z), new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z), grenadeVerticalFallCurveNoBounce.Evaluate(fallTime));
+            }
+            else
+            {
+                base.transform.localPosition = Vector3.Lerp(new Vector3(base.transform.localPosition.x, startFallingPosition.y, base.transform.localPosition.z), new Vector3(base.transform.localPosition.x, targetFloorPosition.y, base.transform.localPosition.z), grenadeVerticalFallCurve.Evaluate(fallTime));
+            }
+            fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
+        }
+
         public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
         {
             if (checkForPath)
@@ -167,37 +222,46 @@ namespace SCP4666
         {
             logger.LogDebug("OnHitGround");
 
-            if (IsServer && isThrown && StartOfRound.Instance.shipHasLanded)
+            try
             {
-                heldObject = GetClosestItem(1f);
-                if (heldObject == null) { logger.LogDebug("Cant find item to grab"); return; }
+                if (IsServer && isThrown && (StartOfRound.Instance.shipHasLanded || Utils.inTestRoom))
+                {
+                    heldObject = GetClosestItem(1f);
+                    if (heldObject == null) { logger.LogDebug("Cant find item to grab"); return; }
 
-                if (isInsideFactory)
-                {
-                    mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: false);
-                    if (!Utils.CalculatePath(transform.position, mainEntranceInsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
+                    if (isInsideFactory)
+                    {
+                        mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: false);
+                        if (!Utils.CalculatePath(transform.position, mainEntranceInsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
+                    }
+                    else
+                    {
+                        mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: true);
+                        if (!Utils.CalculatePath(transform.position, mainEntranceOutsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
+                    }
+                    GrabItemClientRpc(heldObject.NetworkObject);
                 }
-                else
-                {
-                    mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: true);
-                    if (!Utils.CalculatePath(transform.position, mainEntranceOutsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
-                }
-                GrabItemClientRpc(heldObject.NetworkObject);
             }
-
-            isThrown = false;
-            landing = false;
+            finally
+            {
+                landing = false;
+                isThrown = false;
+            }
         }
 
         GrabbableObject? GetClosestItem(float maxDistance)
         {
-            HoarderBugAI.RefreshGrabbableObjectsInMapList();
             float closestDistance = maxDistance;
             GrabbableObject? closestItem = null;
 
-            foreach (var item in HoarderBugAI.grabbableObjectsInMap.ToList())
+            List<GrabbableObject> items = GameObject.FindObjectsOfType<GrabbableObject>().ToList();
+            items.AddRange(Dolls);
+            items.Remove(this); // TODO: Test this
+
+            foreach (GrabbableObject item in items)
             {
-                if (item == null) { continue; }
+                logger.LogDebug(item.name);
+                if (item == null || !item.grabbable || !item.grabbableToEnemies) { continue; }
                 float distance = Vector3.Distance(transform.position, item.transform.position);
 
                 if (distance < closestDistance && item.TryGetComponent(out GrabbableObject grabObj))
@@ -241,11 +305,13 @@ namespace SCP4666
             heldObject = grabObj;
             heldObject.parentObject = HoldItemPosition;
             heldObject.hasHitGround = false;
-            heldObject.GrabItemFromEnemy(null);
+            //heldObject.GrabItemFromEnemy(null);
             heldObject.isHeldByEnemy = true;
             heldObject.EnablePhysics(false);
             HoarderBugAI.grabbableObjectsInMap.Remove(heldObject.gameObject);
+            //HoarderBugAI.grabbableObjectsInMap.Remove(gameObject);
             grabbable = false;
+            grabbableToEnemies = false;
             collider.enabled = false;
             itemAnimator.SetTrigger("carry");
         }
@@ -265,13 +331,14 @@ namespace SCP4666
             itemGrabbableObject.startFallingPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(itemGrabbableObject.transform.position);
             itemGrabbableObject.targetFloorPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(targetFloorPosition);
             itemGrabbableObject.floorYRot = -1;
-            itemGrabbableObject.DiscardItemFromEnemy();
+            //itemGrabbableObject.DiscardItemFromEnemy();
             itemGrabbableObject.isHeldByEnemy = false;
             HoarderBugAI.grabbableObjectsInMap.Add(itemGrabbableObject.gameObject);
+            //HoarderBugAI.grabbableObjectsInMap.Add(gameObject);
 
-            
             heldObject = null;
             grabbable = true;
+            grabbableToEnemies = true;
             collider.enabled = true;
             itemAnimator.SetTrigger("idle");
         }
