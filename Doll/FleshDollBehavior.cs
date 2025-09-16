@@ -58,11 +58,6 @@ namespace SCP4666
 
         public override void Update()
         {
-            if (isThrown && fallTime > 0.75 && !landing)
-            {
-                landing = true;
-                itemAnimator.SetTrigger("land");
-            }
             if (heldObject != null && heldObject.playerHeldBy != null && IsServer) // TODO: Need to handle player grabbing item back from doll, test this
             {
                 DropItemClientRpc(transform.position);
@@ -74,7 +69,7 @@ namespace SCP4666
             }
             if (StartOfRound.Instance.currentLevel.spawnEnemiesAndScrap)
             {
-                agent.enabled = !isHeld && reachedFloorTarget && fallTime >= 1f;
+                agent.enabled = !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
                 /*if (fallTime >= 1f && !reachedFloorTarget)
                 {
                     targetFloorPosition = base.transform.position;
@@ -82,7 +77,7 @@ namespace SCP4666
                     agent.enabled = true;
                 }*/
             }
-            if (isHeld || !reachedFloorTarget || fallTime < 1f || isInElevator)
+            if (isHeld || isHeldByEnemy || !reachedFloorTarget || fallTime < 1f || isInElevator)
             {
                 base.Update();
             }
@@ -150,8 +145,13 @@ namespace SCP4666
             {
                 heldObject.transform.position = HoldItemPosition.position;
             }
+            if (isThrown && fallTime > 0.75 && !landing)
+            {
+                landing = true;
+                itemAnimator.SetTrigger("land");
+            }
 
-            itemAnimator.SetBool("sit", isHeld && playerHeldBy == null);
+            itemAnimator.SetBool("sit", isHeldByEnemy);
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true) // Synced
@@ -254,20 +254,31 @@ namespace SCP4666
             float closestDistance = maxDistance;
             GrabbableObject? closestItem = null;
 
-            List<GrabbableObject> items = GameObject.FindObjectsOfType<GrabbableObject>().ToList();
-            items.AddRange(Dolls);
-            items.Remove(this); // TODO: Test this
-
-            foreach (GrabbableObject item in items)
+            foreach (GrabbableObject item in GameObject.FindObjectsOfType<GrabbableObject>())
             {
                 logger.LogDebug(item.name);
                 if (item == null || !item.grabbable || !item.grabbableToEnemies) { continue; }
                 float distance = Vector3.Distance(transform.position, item.transform.position);
 
-                if (distance < closestDistance && item.TryGetComponent(out GrabbableObject grabObj))
+                if (distance < closestDistance)
                 {
                     closestDistance = distance;
-                    closestItem = grabObj;
+                    closestItem = item;
+                }
+            }
+            if (closestItem == null)
+            {
+                foreach (GrabbableObject item in Dolls)
+                {
+                    logger.LogDebug(item.name);
+                    if (item == null || item == this) { continue; }
+                    float distance = Vector3.Distance(transform.position, item.transform.position);
+
+                    if (distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        closestItem = item;
+                    }
                 }
             }
 
