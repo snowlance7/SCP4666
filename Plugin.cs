@@ -41,38 +41,17 @@ namespace SCP4666
         public static ConfigEntry<string> config4666LevelRarities;
         public static ConfigEntry<string> config4666CustomLevelRarities;
 
-        public static ConfigEntry<int> configMinPresentCount;
-        public static ConfigEntry<int> configMaxPresentCount;
-        public static ConfigEntry<float> configTeleportCooldown;
-        public static ConfigEntry<float> configKnifeThrowCooldown;
-        public static ConfigEntry<float> configKnifeReturnCooldown;
-        public static ConfigEntry<float> configKnifeThrowMinDistance;
-        public static ConfigEntry<float> configKnifeThrowMaxDistance;
-        public static ConfigEntry<float> configTeleportDistance;
-        //public static ConfigEntry<float> configDistanceToPickUpKnife;
-        public static ConfigEntry<int> configSliceDamage;
-        public static ConfigEntry<int> configSlapDamage;
-        public static ConfigEntry<int> configHitAmountToDropPlayer;
-        public static ConfigEntry<bool> configMakeScreenBlackAbduct;
-
         // Enchanted Knife Configs
-        //public static ConfigEntry<string> configKnifeLevelRarities;
-        //public static ConfigEntry<string> configKnifeCustomLevelRarities;
+        public static ConfigEntry<string> configKnifeLevelRarities;
+        public static ConfigEntry<string> configKnifeCustomLevelRarities;
         public static ConfigEntry<int> configKnifeMinValue;
         public static ConfigEntry<int> configKnifeMaxValue;
 
-        public static ConfigEntry<float> configChargeTime;
-        public static ConfigEntry<int> configKnifeHitForce;
-        public static ConfigEntry<float> configThrowForce;
-        public static ConfigEntry<int> configKnifeHitForceYuleman;
-
         // Sack Configs
+        public static ConfigEntry<string> configSackLevelRarities;
+        public static ConfigEntry<string> configSackCustomLevelRarities;
         public static ConfigEntry<int> configSackMinValue;
         public static ConfigEntry<int> configSackMaxValue;
-        public static ConfigEntry<bool> configRandomSack;
-        public static ConfigEntry<bool> configMakePlayersChildOnRevive;
-        public static ConfigEntry<float> configChildMinSize;
-        public static ConfigEntry<float> configChildMaxSize;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
         private void Awake()
@@ -136,6 +115,15 @@ namespace SCP4666
             Utilities.FixMixerGroups(Doll.spawnPrefab);
             LethalLib.Modules.Items.RegisterScrap(Doll);
 
+            GameObject EvilDoll = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/Doll/EvilFleshDoll.prefab");
+            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(EvilDoll);
+            Utilities.FixMixerGroups(EvilDoll);
+            
+            if (Utils.isBeta)
+            {
+                TESTING.EvilDollPrefab = EvilDoll;
+            }
+
             // Finished
             Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
         }
@@ -149,38 +137,15 @@ namespace SCP4666
             config4666LevelRarities = Config.Bind("SCP-4666 Rarities", "Level Rarities", "ExperimentationLevel:5, AssuranceLevel:6, VowLevel:9, OffenseLevel:10, AdamanceLevel:20, MarchLevel:10, RendLevel:100, DineLevel:100, TitanLevel:75, ArtificeLevel:20, EmbrionLevel:25", "Rarities for each level. See default for formatting.");
             config4666CustomLevelRarities = Config.Bind("SCP-4666 Rarities", "Custom Level Rarities", "Secret LabsLevel:100, CrestLevel:100, Winter LodgeLevel:100, SummitLevel:100, PolarusLevel:100, FilitriosLevel:100, MotraLevel:100", "Rarities for modded levels. Same formatting as level rarities.");
 
-            configMinPresentCount = Config.Bind("SCP-4666", "Minimum Present Count", 3, "Minimum number of presents spawned by SCP-4666.");
-            configMaxPresentCount = Config.Bind("SCP-4666", "Maximum Present Count", 5, "Maximum number of presents spawned by SCP-4666.");
-            configTeleportCooldown = Config.Bind("SCP-4666", "Teleport Cooldown", 15f, "Cooldown (in seconds) between SCP-4666 teleport actions.");
-            configKnifeThrowCooldown = Config.Bind("SCP-4666", "Knife Throw Cooldown", 10f, "Cooldown (in seconds) before SCP-4666 can throw the knife again.");
-            configKnifeReturnCooldown = Config.Bind("SCP-4666", "Knife Return Cooldown", 5f, "Cooldown (in seconds) before SCP-4666 can call the knife back.");
-            configKnifeThrowMinDistance = Config.Bind("SCP-4666", "Knife Throw Minimum Distance", 5f, "Minimum distance SCP-4666 can throw the knife.");
-            configKnifeThrowMaxDistance = Config.Bind("SCP-4666", "Knife Throw Maximum Distance", 10f, "Maximum distance SCP-4666 can throw the knife.");
-            configTeleportDistance = Config.Bind("SCP-4666", "Teleport Distance", 15f, "Distance SCP-4666 needs to be from the player to allow him to teleport.");
-            //configDistanceToPickUpKnife = Config.Bind("SCP-4666", "Distance to Pick Up Knife", 15f, "Distance within which SCP-4666 can retrieve the knife if it is dropped by the player");
-            configSliceDamage = Config.Bind("SCP-4666", "Slice Damage", 25, "Damage dealt by SCP-4666's knife slice.");
-            configSlapDamage = Config.Bind("SCP-4666", "Slap Damage", 10, "Damage dealt by SCP-4666's slap attack. (When his knife is stolen)");
-            configHitAmountToDropPlayer = Config.Bind("SCP-4666", "Hit Amount to Drop Player", 5, "Number of hits required to make SCP-4666 drop a player.");
-            configMakeScreenBlackAbduct = Config.Bind("SCP-4666", "Make Screen Black on Abduction", true, "Set to true to make the player's screen black during abduction.");
-
             // Enchanted Knife Configs
-            //configKnifeLevelRarities = Config.Bind("Enchanted Knife", "Level Rarities", "ExperimentationLevel:0, AssuranceLevel:0, VowLevel:0, OffenseLevel:0, AdamanceLevel:0, MarchLevel:0, RendLevel:0, DineLevel:0, TitanLevel:0, ArtificeLevel:0, EmbrionLevel:0, Modded:0", "Rarities for each level. See default for formatting.");
-            //configKnifeCustomLevelRarities = Config.Bind("Enchanted Knife", "Custom Level Rarities", "", "Rarities for modded levels. Same formatting as level rarities.");
+            configKnifeLevelRarities = Config.Bind("Enchanted Knife", "Level Rarities", "ExperimentationLevel:0, AssuranceLevel:0, VowLevel:0, OffenseLevel:0, AdamanceLevel:0, MarchLevel:0, RendLevel:0, DineLevel:0, TitanLevel:0, ArtificeLevel:0, EmbrionLevel:0, Modded:0", "Rarities for each level. See default for formatting.");
+            configKnifeCustomLevelRarities = Config.Bind("Enchanted Knife", "Custom Level Rarities", "", "Rarities for modded levels. Same formatting as level rarities.");
             configKnifeMinValue = Config.Bind("Enchanted Knife", "Min Value", 100, "Minimum scrap value of enchanted knife.");
             configKnifeMaxValue = Config.Bind("Enchanted Knife", "Max Value", 200, "Maximum scrap value of enchanted knife.");
-
-            configChargeTime = Config.Bind("Enchanted Knife", "Charge Time", 1f, "Time required to charge the throw attack for the knife.");
-            configKnifeHitForce = Config.Bind("Enchanted Knife", "Knife Hit Force", 1, "Damage applied when the knife hits a enemy.");
-            configThrowForce = Config.Bind("Enchanted Knife", "Throw Force", 100f, "How fast the knife will go when thrown");
-            configKnifeHitForceYuleman = Config.Bind("Enchanted Knife", "Knife Hit Force (Player)", 25, "Damage applied when the knife hits a player. This also applies to when the yuleman throws it.");
 
             // Sack Configs
             configSackMinValue = Config.Bind("Child Sack", "Min Value", 100, "Minimum scrap value of the sack the yuleman drops.");
             configSackMaxValue = Config.Bind("Child Sack", "Max Value", 200, "Maximum scrap value of sack the yuleman drops.");
-            configRandomSack = Config.Bind("Child Sack", "Random sack", false, "If set to true, instead of reviving all players on team wipe, it will have a 50/50 chance to either revive a player or spawn a present, with 1 player revive guranteed.");
-            configMakePlayersChildOnRevive = Config.Bind("Child Sack", "Make Players Child On Revive", true, "Should the players size be changed when being revived by the child sack?");
-            configChildMinSize = Config.Bind("Child Sack", "Child Min Size", 0.6f, "Min size to make the player when revived as a child. Default vanilla size of the player is 1.");
-            configChildMaxSize = Config.Bind("Child Sack", "Child Max Size", 0.8f, "Max size to make the player when revived as a child. Default vanilla size of the player is 1.");
         }
 
         public Dictionary<Levels.LevelTypes, int> GetLevelRarities(string levelsString)

@@ -154,14 +154,14 @@ namespace SCP4666.YulemanKnife
                 if (knifeScript.playerHeldBy != null)
                 {
                     if (other.gameObject.TryGetComponent(out PlayerControllerB player) && player == knifeScript.playerHeldBy) { return; } // TODO: Test this
-                    bool hitSuccessful = iHit.Hit(configKnifeHitForce.Value, forward, knifeScript.previousPlayerHeldBy, playHitSFX: true, 5);
+                    bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForceEnemy, forward, knifeScript.previousPlayerHeldBy, playHitSFX: true, 5);
                     if (!hitSuccessful) { log("Hit unsuccessful"); return; }
                 }
                 else
                 {
                     if (!other.gameObject.TryGetComponent(out PlayerControllerB player)) { return; }
                     if (localPlayer != player) { return; }
-                    player.DamagePlayer(configKnifeHitForceYuleman.Value, true, true, CauseOfDeath.Stabbing);
+                    player.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer, true, true, CauseOfDeath.Stabbing);
                 }
                 EntitiesHitByKnife.Add(other);
                 RoundManager.PlayRandomClip(KnifeAudio, TearSFX);

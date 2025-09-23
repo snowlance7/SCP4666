@@ -1,15 +1,15 @@
 ManifestFileVersion: 0
-CRC: 735612079
+CRC: 4150274637
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: edc80a94ec31e8da5032c929c7d5bf06
+    Hash: afc3cf521a511173b5e1d6860aa46754
   TypeTreeHash:
     serializedVersion: 2
-    Hash: 32dba5b89f3e5a44f8751d253ceabf54
+    Hash: ca2696feac492f6aca2d5cbba376a273
   IncrementalBuildHash:
     serializedVersion: 2
-    Hash: edc80a94ec31e8da5032c929c7d5bf06
+    Hash: afc3cf521a511173b5e1d6860aa46754
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -82,6 +82,10 @@ ClassTypes:
   Script: {fileID: 442677342, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 114
   Script: {fileID: 11500000, guid: d3cecf05b78b173605122a700874719c, type: 3}
+- Class: 114
+  Script: {fileID: -1245269143, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
+- Class: 114
+  Script: {fileID: 200115641, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 115
   Script: {instanceID: 0}
 - Class: 137
@@ -122,6 +126,7 @@ Assets:
 - Assets/ModAssets/Yuleman/SCP4666Enemy.asset
 - Assets/ModAssets/Doll/FleshDollItem.asset
 - Assets/ModAssets/Yuleman/Bestiary/SCP4666TK.asset
+- Assets/ModAssets/Doll/EvilFleshDoll.prefab
 - Assets/ModAssets/NetworkHandlerSCP4666.prefab
 - Assets/ModAssets/Knife/YulemanKnifeItem.asset
 - Assets/ModAssets/Sack/ChildSackItem.asset

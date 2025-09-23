@@ -14,7 +14,7 @@ using static SCP4666.Plugin;
 
 namespace SCP4666
 {
-    internal class SCP4666AI : EnemyAI
+    internal class SCP4666AI : EnemyAI // TODO: Rework and add new stuff
     {
         private static ManualLogSource logger = LoggerInstance;
         public static SCP4666AI? Instance { get; private set; }
@@ -33,6 +33,8 @@ namespace SCP4666
         public Transform turnCompass;
         public ThrownKnifeScript thrownKnifeScript;
         public YulemanKnifeBehavior KnifeScript;
+        public GameObject EvilFleshDollPrefab;
+        public GameObject FleshDollPrefab;
 #pragma warning restore 0649
 
         Vector3 mainEntranceOutsidePosition;
@@ -59,8 +61,16 @@ namespace SCP4666
         // Constants
         readonly Vector3 insideScale = new Vector3(1.5f, 1.5f, 1.5f);
         readonly Vector3 outsideScale = new Vector3(2f, 2f, 2f);
-        readonly float attackRange = 5f;
-        readonly float attackAngle = 45f;
+        const float attackRange = 5f;
+        const float attackAngle = 45f;
+        const float teleportCooldown = 15f;
+        const float teleportDistance = 10f;
+        const float knifeReturnCooldown = 5f;
+        const float knifeThrowCooldown = 10f;
+        const float knifeThrowMinDistance = 5f;
+        const float knifeThrowMaxDistance = 10f;
+        const float hitAmountToDropPlayer = 5;
+        const int slapDamage = 10;
 
         public enum State
         {
@@ -83,7 +93,7 @@ namespace SCP4666
 
             if (IsServer)
             {
-                int num = UnityEngine.Random.Range(configMinPresentCount.Value, configMaxPresentCount.Value + 1);
+                int num = UnityEngine.Random.Range(3, 6);
                 SpawnPresents(num);
             }
         }
@@ -216,8 +226,8 @@ namespace SCP4666
                     }
                     
                     // Teleport on cooldown
-                    if ((timeSinceTeleport > configTeleportCooldown.Value && Vector3.Distance(targetPlayer.transform.position, transform.position) > configTeleportDistance.Value)
-                            || (isAngry && timeSinceTeleport > configTeleportCooldown.Value / 2 && Vector3.Distance(targetPlayer.transform.position, transform.position) > configTeleportDistance.Value / 2))
+                    if ((timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance)
+                            || (isAngry && timeSinceTeleport > teleportCooldown / 2 && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance / 2))
                     {
                         log("can teleport");
                         if (!KnifeScript.isThrown
@@ -236,7 +246,7 @@ namespace SCP4666
                     if (!inSpecialAnimation)
                     {
                         // Call knife back on cooldown if it is thrown
-                        if (KnifeScript.isThrown && !callingKnifeBack && timeSinceKnifeThrown > configKnifeReturnCooldown.Value) // TODO: Test this
+                        if (KnifeScript.isThrown && !callingKnifeBack && timeSinceKnifeThrown > knifeReturnCooldown) // TODO: Test this
                         {
                             log("KnifeThrown: " + KnifeScript.isThrown);
                             callingKnifeBack = true;
@@ -248,11 +258,11 @@ namespace SCP4666
                         if (!KnifeScript.isThrown
                             && !callingKnifeBack
                             && !teleporting
-                            && timeSinceKnifeThrown > configKnifeThrowCooldown.Value)
+                            && timeSinceKnifeThrown > knifeThrowCooldown)
                         {
                             //log("Begin throwing knife");
                             float distance = Vector3.Distance(transform.position, targetPlayer.transform.position);
-                            if (distance > configKnifeThrowMinDistance.Value && distance < configKnifeThrowMaxDistance.Value)
+                            if (distance > knifeThrowMinDistance && distance < knifeThrowMaxDistance)
                             {
                                 timeSinceKnifeThrown = 0f;
                                 inSpecialAnimation = true;
@@ -523,7 +533,7 @@ namespace SCP4666
             {
                 timesHitWhileAbducting++;
                 log($"Yuleman hit {timesHitWhileAbducting} times");
-                if (timesHitWhileAbducting >= configHitAmountToDropPlayer.Value)
+                if (timesHitWhileAbducting >= hitAmountToDropPlayer)
                 {
                     timesHitWhileAbducting = 0;
                     log("Dropping player in sack");
@@ -645,7 +655,7 @@ namespace SCP4666
             targetPlayer.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
         }*/
 
-        public void DoSlashDamageAnimation() // Synced
+        public void DoSlashDamageAnimation() // Animation
         {
             PlayerControllerB player = localPlayer;
             if (player == null || !PlayerIsTargetable(player)) { return; }
@@ -660,11 +670,11 @@ namespace SCP4666
             {
                 log("Damaging " + player.playerUsername);
                 int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
-                player.DamagePlayer(configSliceDamage.Value, true, true, CauseOfDeath.Stabbing, deathAnim);
+                player.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer, true, true, CauseOfDeath.Stabbing, deathAnim);
             }
         }
 
-        public void DoSlapDamageAnimation() // Synced
+        public void DoSlapDamageAnimation() // Animation
         {
             PlayerControllerB player = localPlayer;
             if (player == null || !PlayerIsTargetable(player)) { return; }
@@ -678,7 +688,7 @@ namespace SCP4666
             if (angleToPlayer <= attackAngle)
             {
                 log("Damaging " + player.playerUsername);
-                player.DamagePlayer(configSlapDamage.Value, true, true, CauseOfDeath.Mauling, 0, false, transform.position + transform.forward * 5);
+                player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.position + transform.forward * 5);
             }
         }
 

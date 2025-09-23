@@ -50,6 +50,10 @@ namespace SCP4666.YulemanKnife
         Vector3 rotationOffset = new Vector3(-30f, -90f, 90f);
         Vector3 positionOffset = new Vector3(-0.2f, 0.26f, -0.02f);
 
+        const float chargeTime = 1f;
+        public const int knifeHitForceEnemy = 1;
+        public const int knifeHitForcePlayer = 25;
+
         public override void Update()
         {
             base.Update();
@@ -130,7 +134,7 @@ namespace SCP4666.YulemanKnife
 
         IEnumerator ChargeKnife()
         {
-            yield return new WaitForSecondsRealtime(configChargeTime.Value);
+            yield return new WaitForSecondsRealtime(chargeTime);
             rotationOffset = RotationOffsetThrow;
             positionOffset = PositionOffsetThrow;
             KnifeAudio.PlayOneShot(KnifeChargeSFX, 1f);
@@ -211,7 +215,7 @@ namespace SCP4666.YulemanKnife
                             }
                             if (!(objectsHitByKnifeList[i].transform.GetComponent<PlayerControllerB>() != null))
                             {
-                                hitForce = configKnifeHitForce.Value;
+                                hitForce = knifeHitForceEnemy;
                                 goto IL_02f2;
                             }
                             if (!hasTriggeredFirstHit)

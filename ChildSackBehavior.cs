@@ -17,19 +17,8 @@ namespace SCP4666
         public static bool localPlayerSizeChangedFromSack;
 
         // Configs
-        bool makePlayersChildOnRevive = true;
-        float minSize = 0.6f;
-        float maxSize = 0.8f;
-        bool usingRandomMode = false;
-
-        public override void Start()
-        {
-            base.Start();
-            usingRandomMode = configRandomSack.Value;
-            makePlayersChildOnRevive = configMakePlayersChildOnRevive.Value;
-            minSize = configChildMinSize.Value;
-            maxSize = configChildMaxSize.Value;
-        }
+        const float minSize = 0.6f;
+        const float maxSize = 0.8f;
 
         public void Activate()
         {
@@ -43,45 +32,29 @@ namespace SCP4666
 
             if (playerHeldBy != null) { playerHeldBy.DropAllHeldItemsAndSync(); } // TODO: Log this
 
-            if (usingRandomMode)
+            int playersRespawned = 0;
+            foreach (var player in StartOfRound.Instance.allPlayerScripts)
             {
-                LoggerInstance.LogDebug("Using random mode for child sack");
-                int playersRespawned = 0;
-                foreach (var player in StartOfRound.Instance.allPlayerScripts)
+                if (!player.isPlayerDead) { continue; }
+
+                if (playersRespawned == 0)
                 {
-                    if (!player.isPlayerDead) { continue; }
-
-                    if (playersRespawned == 0)
-                    {
-                        float size = UnityEngine.Random.Range(minSize, maxSize);
-                        DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
-                        playersRespawned++;
-                        continue;
-                    }
-
-                    int num = UnityEngine.Random.Range(0, 2);
-                    if (num == 0)
-                    {
-                        float size = UnityEngine.Random.Range(minSize, maxSize);
-                        DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
-                        playersRespawned++;
-                    }
-                    else
-                    {
-                        SpawnPresent();
-                    }
-                }
-            }
-            else
-            {
-                LoggerInstance.LogDebug("Reviving dead players");
-
-                foreach (var player in StartOfRound.Instance.allPlayerScripts)
-                {
-                    if (!player.isPlayerDead) { continue; }
-
                     float size = UnityEngine.Random.Range(minSize, maxSize);
                     DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
+                    playersRespawned++;
+                    continue;
+                }
+
+                int num = UnityEngine.Random.Range(0, 2);
+                if (num == 0)
+                {
+                    float size = UnityEngine.Random.Range(minSize, maxSize);
+                    DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
+                    playersRespawned++;
+                }
+                else
+                {
+                    SpawnPresent();
                 }
             }
 

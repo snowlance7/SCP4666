@@ -3,18 +3,21 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LethalLib.Modules;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
 using static SCP4666.Plugin;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace SCP4666
-{ 
+{
     public static class Utils
     {
         private static ManualLogSource logger = LoggerInstance;
 
+        public static bool isBeta = true; // TODO: Set to false before release
         public static bool debuggingEnabled = true;
         public static bool trailerMode = false;
 
@@ -369,37 +372,13 @@ namespace SCP4666
             return targetVent;
         }
 
-        public static GameObject SpawnDebugCube(Vector3 position, Color color, float size = 1f)
-        {
-            // Create a cube primitive
-            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-
-            // Set position and scale
-            cube.transform.position = position;
-            cube.transform.localScale = Vector3.one * size;
-
-            // Give it a simple material and color
-            var renderer = cube.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.material = new Material(Shader.Find("Unlit/Color"));
-                renderer.material.color = color;
-            }
-
-            // (Optional) Mark as editor-only so it doesn’t get left behind in builds
-            cube.name = $"DebugCube_{position}";
-            GameObject.Destroy(cube.GetComponent<Collider>()); // remove collider if not needed
-
-            return cube;
-        }
-
         public static bool CalculatePath(Vector3 fromPos, Vector3 toPos)
         {
             Vector3 from = RoundManager.Instance.GetNavMeshPosition(fromPos, RoundManager.Instance.navHit, 1.75f);
             Vector3 to = RoundManager.Instance.GetNavMeshPosition(toPos, RoundManager.Instance.navHit, 1.75f);
 
             NavMeshPath path = new();
-            return NavMesh.CalculatePath(from, to, -1, path) && Vector3.Distance(path.corners[path.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(to, RoundManager.Instance.navHit, 2.7f)) <= 1.55f; // TODO: Test this
+            return NavMesh.CalculatePath(from, to, -1, path) && Vector3.Distance(path.corners[path.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(to, RoundManager.Instance.navHit, 2.7f)) <= 1.55f;
         }
 
         public static T? GetClosestGameObjectOfType<T>(Vector3 position) where T : Component
@@ -458,8 +437,8 @@ namespace SCP4666
         {
             Dictionary<string, GameObject> hazards = new Dictionary<string, GameObject>();
             List<SpawnableMapObject> spawnableMapObjects = (from x in StartOfRound.Instance.levels.SelectMany((SelectableLevel level) => level.spawnableMapObjects)
-                                              group x by ((UnityEngine.Object)x.prefabToSpawn).name into g
-                                              select g.First()).ToList();
+                                                            group x by ((UnityEngine.Object)x.prefabToSpawn).name into g
+                                                            select g.First()).ToList();
             foreach (SpawnableMapObject item in spawnableMapObjects)
             {
                 hazards.Add(item.prefabToSpawn.name, item.prefabToSpawn);
@@ -587,7 +566,8 @@ namespace SCP4666
         [HarmonyPrefix, HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnInsideEnemiesFromVentsIfReady))]
         public static bool SpawnInsideEnemiesFromVentsIfReadyPrefix()
         {
-            if (Utils.disableSpawning) { return false; } return true;
+            if (Utils.disableSpawning) { return false; }
+            return true;
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnDaytimeEnemiesOutside))]

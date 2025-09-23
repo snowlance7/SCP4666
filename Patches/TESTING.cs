@@ -25,10 +25,12 @@ namespace SCP4666
     public class TESTING : MonoBehaviour
     {
         private static ManualLogSource logger = LoggerInstance;
+        public static GameObject? EvilDollPrefab;
 
         [HarmonyPostfix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.PingScan_performed))]
         public static void PingScan_performedPostFix()
         {
+            if (!Utils.isBeta) { return; }
             if (!Utils.testing) { return; }
 
         }
@@ -36,12 +38,18 @@ namespace SCP4666
         [HarmonyPrefix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SubmitChat_performed))]
         public static void SubmitChat_performedPrefix(HUDManager __instance)
         {
+            if (!Utils.isBeta) { return; }
+            if (!IsServerOrHost) { return; }
             string msg = __instance.chatTextField.text;
             string[] args = msg.Split(" ");
-            logger.LogDebug(msg);
+            LoggerInstance.LogDebug(msg);
 
             switch (args[0])
             {
+                case "/spawnDoll":
+                    LoggerInstance.LogDebug("Spawning doll");
+                    GameObject.Instantiate(EvilDollPrefab, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, Quaternion.identity);
+                    break;
                 default:
                     Utils.ChatCommand(args);
                     break;
