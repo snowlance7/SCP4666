@@ -2,6 +2,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using SCP4666.YulemanKnife;
 using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Diagnostics;
 using static SCP4666.Plugin;
@@ -46,9 +47,10 @@ namespace SCP4666
 
             switch (args[0])
             {
-                case "/spawnDoll":
+                case "/doll":
                     LoggerInstance.LogDebug("Spawning doll");
-                    GameObject.Instantiate(EvilDollPrefab, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, Quaternion.identity);
+                    GameObject obj = GameObject.Instantiate(EvilDollPrefab, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
+                    obj.GetComponent<NetworkObject>().Spawn(true);
                     break;
                 default:
                     Utils.ChatCommand(args);

@@ -1,6 +1,7 @@
 ﻿using BepInEx.Logging;
 using GameNetcodeStuff;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,11 +20,12 @@ namespace SCP4666.Doll
 
         public static HashSet<EvilFleshDollAI> EvilFleshDolls = [];
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         public NavMeshAgent agent;
         public Animator animator;
-        public Rigidbody rb;
         public GameObject bombMesh;
         public AudioSource audioSource;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         public bool isBombDoll;
 
@@ -38,16 +40,18 @@ namespace SCP4666.Doll
         Vector3 mainEntranceInsidePosition;
         Vector3 mainEntranceOutsidePosition;
 
-        bool isGrounded;
+        Vector3 targetFloorPosition;
+
         bool landing;
         bool falling;
+        bool jumping;
 
         bool inSpecialAnimation;
 
         bool isEnemyDead;
         Vector3 lastPosition;
 
-        int hashRun;
+        //int hashRun;
 
         bool clingingToPlayer;
         int bodyPartIndex;
@@ -66,10 +70,12 @@ namespace SCP4666.Doll
             new Vector3(0, 0, 0),   // 10 Right Shoulder
         ];
 
-        public const float force = 10f;
         public const int floorMask = 268437761;
-        public const float distanceToJumpAtPlayer = 2f;
         public const int biteDamage = 2;
+
+        public const float distanceToJumpAtPlayer = 4f;
+        const float jumpHeight = 2f;
+        const float jumpDuration = 0.5f;
 
         public override void OnDestroy()
         {
@@ -79,61 +85,21 @@ namespace SCP4666.Doll
 
         public void Start()
         {
-            hashRun = Animator.StringToHash("run");
+            //hashRun = Animator.StringToHash("run");
             EvilFleshDolls.Add(this);
 
             mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(true, false);
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(true, true);
 
-            rb.isKinematic = false;
-            rb.AddForce(transform.forward * force);
+            falling = false;
+            landing = false;
             animator.SetTrigger("fall");
+            Lunge(2f, 0f, 0.5f);
         }
 
         public void Update()
         {
-            if (inSpecialAnimation || !IsServer || clingingToPlayer) { return; }
-
-            if (isEnemyDead)
-            {
-                if (!isGrounded)
-                {
-                    if (IsCloseToGround(0.04f))
-                    {
-                        isGrounded = true;
-                        rb.isKinematic = true;
-                    }
-                }
-
-                return;
-            }
-
-            if (!isGrounded)
-            {
-                if (rb.velocity.y > 0.1f) { return; }
-                else if (!falling && rb.velocity.y < -0.1f)
-                {
-                    falling = true;
-                    DoAnimationClientRpc("fall");
-                }
-
-                if (!landing && IsCloseToGround(1f))
-                {
-                    landing = true;
-                    DoAnimationClientRpc("land");
-                }
-
-                if (IsCloseToGround(0.04f))
-                {
-                    isGrounded = true;
-                    rb.isKinematic = true;
-                    agent.enabled = true;
-                    landing = false;
-                    falling = false;
-                }
-
-                return;
-            }
+            if (inSpecialAnimation || !IsServer || clingingToPlayer || isEnemyDead || jumping) { return; }
 
             timeSinceIntervalUpdate += Time.deltaTime;
 
@@ -144,7 +110,21 @@ namespace SCP4666.Doll
             }
         }
 
-        public void LateUpdate()
+        private void OnHitGround()
+        {
+            logger.LogDebug("OnHitGround");
+            jumping = false;
+            falling = false;
+            landing = false;
+            inSpecialAnimation = false;
+
+            agent.enabled = true;
+            agent.Warp(transform.position);
+            agent.ResetPath();
+            agent.isStopped = false;
+        }
+
+        /*public void LateUpdate()
         {
             if (isEnemyDead) { return; }
 
@@ -154,21 +134,25 @@ namespace SCP4666.Doll
             animator.SetBool(hashRun, speed > 0f);
 
             lastPosition = transform.position;
-        }
+        }*/
 
         public void DoAIInterval()
         {
-            if (SCP4666AI.Instance == null)
+            /*if (SCP4666AI.Instance == null)
             {
                 NetworkObject.Despawn(true);
                 return;
-            }
+            }*/
 
             targetPlayer = GetClosestPlayer();
 
             if (targetPlayer == null)
             {
-                agent.enabled = false;
+                if (!SetDestinationToPosition(SCP4666AI.Instance.transform.position, true))
+                {
+                    SetDestinationToEntrance();
+                    return;
+                }
             }
             else
             {
@@ -180,7 +164,8 @@ namespace SCP4666.Doll
 
                 if (Vector3.Distance(transform.position, targetPlayer.transform.position) <= distanceToJumpAtPlayer)
                 {
-                    agent.enabled = false;
+                    logger.LogDebug("Attempt jump at player");
+                    agent.isStopped = true;
                     inSpecialAnimation = true;
                     DoAnimationClientRpc("jump");
                 }
@@ -189,6 +174,7 @@ namespace SCP4666.Doll
 
         void SetDestinationToEntrance()
         {
+            if (agent == null || agent.enabled == false) { return; }
             if (isInsideFactory)
             {
                 SetDestinationToPosition(mainEntranceInsidePosition);
@@ -232,13 +218,14 @@ namespace SCP4666.Doll
 
         public void OnCollideWithPlayer(PlayerControllerB player)
         {
+            return; // TODO: For testing, remove later
             if (!IsServer) { return; }
             targetPlayer = player;
-            agent.enabled = false;
+            agent.isStopped = true;
             inSpecialAnimation = false;
             falling = false;
             landing = false;
-            isGrounded = false;
+            jumping = false;
 
             clingingToPlayer = true;
             bodyPartIndex = UnityEngine.Random.Range(0, 11);
@@ -256,13 +243,9 @@ namespace SCP4666.Doll
             HitEnemyServerRpc();
         }
 
-        bool IsCloseToGround(float distance)
-        {
-            return Physics.Raycast(transform.position, Vector3.down, distance, floorMask);
-        }
-
         public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
         {
+            if (agent == null || agent.enabled == false) { return false; }
             if (checkForPath)
             {
                 position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 1.75f);
@@ -283,7 +266,7 @@ namespace SCP4666.Doll
             return true;
         }
 
-        public Vector3 GetItemFloorPosition(Vector3 startPosition = default(Vector3))
+        public Vector3 GetItemFloorPosition(Vector3 startPosition)
         {
             if (startPosition == Vector3.zero)
             {
@@ -291,7 +274,8 @@ namespace SCP4666.Doll
             }
             if (Physics.Raycast(startPosition, -Vector3.up, out var hitInfo, 80f, floorMask, QueryTriggerInteraction.Ignore))
             {
-                return hitInfo.point + Vector3.up * 0.04f/* + itemProperties.verticalOffset * Vector3.up*/;
+                Vector3 pos = hitInfo.point + Vector3.up * 0.04f/* + itemProperties.verticalOffset * Vector3.up*/;
+                return RoundManager.Instance.GetNavMeshPosition(pos);
             }
             return startPosition;
         }
@@ -316,7 +300,67 @@ namespace SCP4666.Doll
             return closestPlayer;
         }
 
-        public void JumpAtTargetPlayer() // Animation
+        public void Lunge(float distance, float jumpHeight, float duration)
+        {
+            if (jumping) { return; }
+            jumping = true;
+            StartCoroutine(LungeRoutine(distance, jumpHeight, duration));
+        }
+
+        IEnumerator LungeRoutine(float distance, float jumpHeight, float duration)
+        {
+            targetFloorPosition = transform.position + transform.forward * distance;
+            targetFloorPosition = GetItemFloorPosition(targetFloorPosition);
+
+            Vector3 start = transform.position;
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                if (!jumping)
+                {
+                    yield break;
+                }
+
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+
+                // Ease-out curve (starts fast, slows at targetFloorPosition)
+                //t = 1f - Mathf.Pow(1f - t, 3f);
+
+                // Horizontal motion
+                Vector3 horizontalPos = Vector3.Lerp(start, targetFloorPosition, t);
+
+                // Vertical arc (parabola) — will be 0 if jumpHeight is 0
+                float height = 4 * jumpHeight * t * (1 - t);
+
+                logger.LogDebug("duration: " + t);
+
+                if (t > 0.5f && !falling)
+                {
+                    falling = true;
+                    DoAnimationClientRpc("fall");
+                    logger.LogDebug("finished fall animation");
+                }
+                if (t > 0.75f && !landing)
+                {
+                    landing = true;
+                    DoAnimationClientRpc("land");
+                    logger.LogDebug("finished land animation");
+                }
+
+                // Apply combined motion
+                transform.position = horizontalPos + Vector3.up * height;
+
+                yield return null;
+            }
+
+            jumping = false;
+            OnHitGround();
+        }
+
+
+        public void JumpAtTargetPlayer() // Animation: Gets called after winding up jump
         {
             if (!IsServer) { return; }
 
@@ -328,15 +372,11 @@ namespace SCP4666.Doll
                 return;
             }
 
-            Vector3 direction = (targetPlayer.gameplayCamera.transform.position - transform.position).normalized;
-
-            rb.isKinematic = false;
-            rb.AddForce(direction * force);
             inSpecialAnimation = false;
-            isGrounded = false;
+            Lunge(distanceToJumpAtPlayer * 2, jumpHeight, jumpDuration);
         }
 
-        public void FinishHangAnimation() // Animation
+        public void FinishHangAnimation() // Animation: Gets called after attaching to player
         {
             if (!IsServer) { return; }
 
@@ -350,7 +390,7 @@ namespace SCP4666.Doll
             }
         }
 
-        public void BitePlayer() // Animation
+        public void BitePlayer() // Animation: Gets called when doll biting player animation finishes a cycle
         {
             if (!IsServer) { return; }
 
@@ -361,6 +401,7 @@ namespace SCP4666.Doll
         public void DoAnimationClientRpc(string animationName)
         {
             animator.SetTrigger(animationName);
+            logger.LogDebug("Playing animation: " + animationName);
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -372,11 +413,12 @@ namespace SCP4666.Doll
             {
                 clingingToPlayer = false;
                 transform.SetParent(null);
-                rb.isKinematic = false;
-                isGrounded = false;
-                agent.enabled = false;
+                //rb.isKinematic = false;
+                jumping = false;
+                agent.isStopped = true;
                 isEnemyDead = true;
                 DoAnimationClientRpc("die");
+                Lunge(0f, 0f, 1f); // TODO: Figure out if this works
             }
         }
 

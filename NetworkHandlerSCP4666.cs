@@ -91,6 +91,14 @@ namespace SCP4666
 
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
             log("Added networkPrefab");
+
+            GameObject EvilDoll = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/Doll/EvilFleshDoll.prefab");
+            NetworkManager.Singleton.AddNetworkPrefab(EvilDoll);
+
+            if (Utils.isBeta)
+            {
+                TESTING.EvilDollPrefab = EvilDoll;
+            }
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]

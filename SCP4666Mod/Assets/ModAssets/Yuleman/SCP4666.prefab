@@ -7904,7 +7904,7 @@ NavMeshAgent:
   m_AgentTypeID: 0
   m_Radius: 0.5
   m_Speed: 5
-  m_Acceleration: 8
+  m_Acceleration: 50
   avoidancePriority: 50
   m_AngularSpeed: 1200
   m_StoppingDistance: 0
@@ -8061,7 +8061,8 @@ MonoBehaviour:
   turnCompass: {fileID: 6603682875393845749}
   thrownKnifeScript: {fileID: 0}
   KnifeScript: {fileID: 1883177008451820689}
-  isKnifeOwned: 1
+  EvilFleshDollPrefab: {fileID: 0}
+  FleshDollPrefab: {fileID: 0}
 --- !u!95 &2694988325916197485
 Animator:
   serializedVersion: 5
@@ -8194,6 +8195,13 @@ MonoBehaviour:
     TransitionDuration: 0
     TriggerNameHash: 1100888573
     TransitionIndex: 6
+  - IsCrossFadeExit: 0
+    Layer: 0
+    OriginatingState: 883659650
+    DestinationState: -668035017
+    TransitionDuration: 0
+    TriggerNameHash: 1628729824
+    TransitionIndex: 7
   m_Animator: {fileID: 2694988325916197485}
 --- !u!114 &6068984743139132327
 MonoBehaviour:

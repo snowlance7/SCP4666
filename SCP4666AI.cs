@@ -19,7 +19,7 @@ namespace SCP4666
         private static ManualLogSource logger = LoggerInstance;
         public static SCP4666AI? Instance { get; private set; }
 
-#pragma warning disable 0649
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         public NetworkAnimator networkAnimator;
         public Transform RightHandTransform;
         public Transform ChildSackTransform;
@@ -35,7 +35,7 @@ namespace SCP4666
         public YulemanKnifeBehavior KnifeScript;
         public GameObject EvilFleshDollPrefab;
         public GameObject FleshDollPrefab;
-#pragma warning restore 0649
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         Vector3 mainEntranceOutsidePosition;
         Vector3 mainEntrancePosition;

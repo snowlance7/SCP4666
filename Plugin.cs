@@ -115,15 +115,6 @@ namespace SCP4666
             Utilities.FixMixerGroups(Doll.spawnPrefab);
             LethalLib.Modules.Items.RegisterScrap(Doll);
 
-            GameObject EvilDoll = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/Doll/EvilFleshDoll.prefab");
-            LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(EvilDoll);
-            Utilities.FixMixerGroups(EvilDoll);
-            
-            if (Utils.isBeta)
-            {
-                TESTING.EvilDollPrefab = EvilDoll;
-            }
-
             // Finished
             Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
         }
