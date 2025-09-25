@@ -1,5 +1,6 @@
 using BepInEx.Logging;
 using HarmonyLib;
+using SCP4666.Doll;
 using SCP4666.YulemanKnife;
 using System.Linq;
 using Unity.Netcode;
@@ -47,6 +48,10 @@ namespace SCP4666
 
             switch (args[0])
             {
+                case "/index":
+                    EvilFleshDollAI.DEBUG_bodyPartIndex = int.Parse(args[1]);
+                    HUDManager.Instance.DisplayTip("BodyPartIndex", args[1]);
+                    break;
                 case "/doll":
                     LoggerInstance.LogDebug("Spawning doll");
                     GameObject obj = GameObject.Instantiate(EvilDollPrefab, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);

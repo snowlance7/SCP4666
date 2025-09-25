@@ -17,8 +17,10 @@ namespace SCP4666.Doll
     internal class EvilFleshDollAI : NetworkBehaviour // TODO: Need to test and fix
     {
         private static ManualLogSource logger = LoggerInstance;
+        public static int DEBUG_bodyPartIndex = 0;
 
         public static HashSet<EvilFleshDollAI> EvilFleshDolls = [];
+
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         public NavMeshAgent agent;
@@ -49,29 +51,41 @@ namespace SCP4666.Doll
         bool inSpecialAnimation;
 
         bool isEnemyDead;
-        Vector3 lastPosition;
 
-        //int hashRun;
-
-        bool clingingToPlayer;
+        //bool clingingToPlayer;
         int bodyPartIndex;
-        readonly Vector3[] clingOffsets =
+        Transform? parentObject;
+        readonly Vector3[] clingPosOffsets =
         [
-            new Vector3(0, 0, 0),   // 0 Head
-            new Vector3(0, 0, 0),   // 1 Right Arm
-            new Vector3(0, 0, 0),   // 2 Left Arm
-            new Vector3(0, 0, 0),   // 3 Right Leg
-            new Vector3(0, 0, 0),   // 4 Left Leg
-            new Vector3(0, 0, 0),   // 5 Chest
-            new Vector3(0, 0, 0),   // 6 Feet
-            new Vector3(0, 0, 0),   // 7 Right Hip
-            new Vector3(0, 0, 0),   // 8 Crotch
-            new Vector3(0, 0, 0),   // 9 Left Shoulder
-            new Vector3(0, 0, 0),   // 10 Right Shoulder
+            new Vector3(0.1f, 0, 0.35f),   // 0 Head
+            new Vector3(0, 0.3f, -0.15f),   // 1 Right Arm
+            new Vector3(0, 0.3f, -0.2f),   // 2 Left Arm
+            new Vector3(0.1f, 0.3f, -0.25f),   // 3 Right Leg
+            new Vector3(0.1f, 0.2f, -0.2f),   // 4 Left Leg
+            new Vector3(0, -0.2f, 0.3f),   // 5 Chest
+            new Vector3(0.05f, 1.6f, -0.6f),   // 6 Feet -> Back Tank
+            new Vector3(0, 0.5f, 0.3f),   // 7 Right Hip -> Right Back Leg
+            new Vector3(0, 0.5f, 0.2f),   // 8 Crotch -> Left Back Leg
+            new Vector3(-0.15f, 0.6f, 0.1f),   // 9 Left Shoulder
+            new Vector3(0, 0.5f, 0.15f),   // 10 Right Shoulder
+        ];
+        readonly Vector3[] clingRotOffsets =
+        [
+            new Vector3(160, 0, 160),   // 0 Head
+            new Vector3(0, 0, 160),   // 1 Right Arm
+            new Vector3(0, 0, 200),   // 2 Left Arm
+            new Vector3(200, 160, 0),   // 3 Right Leg
+            new Vector3(200, 160, 0),   // 4 Left Leg
+            new Vector3(180, 0, 180),   // 5 Chest
+            new Vector3(10, 0, 0),   // 6 Feet -> Back Tank
+            new Vector3(200, 0, 0),   // 7 Right Hip -> Right Back Leg
+            new Vector3(180, 0, 0),   // 8 Crotch -> Left Back Leg
+            new Vector3(180, -70, 0),   // 9 Left Shoulder
+            new Vector3(180, 0, 0),   // 10 Right Shoulder
         ];
 
         public const int floorMask = 268437761;
-        public const int biteDamage = 2;
+        public const int biteDamage = 1;
 
         public const float distanceToJumpAtPlayer = 4f;
         const float jumpHeight = 2f;
@@ -85,7 +99,7 @@ namespace SCP4666.Doll
 
         public void Start()
         {
-            //hashRun = Animator.StringToHash("run");
+            StartOfRound.Instance.LocalPlayerDamagedEvent.AddListener(LocalPlayerDamaged);
             EvilFleshDolls.Add(this);
 
             mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(true, false);
@@ -99,7 +113,22 @@ namespace SCP4666.Doll
 
         public void Update()
         {
-            if (inSpecialAnimation || !IsServer || clingingToPlayer || isEnemyDead || jumping) { return; }
+            if (inSpecialAnimation || !IsServer || isEnemyDead || jumping) { return; }
+
+            if (parentObject != null)
+            {
+                if (targetPlayer == null) { return; }
+                isInsideFactory = targetPlayer.isInsideFactory;
+                if (targetPlayer.isPlayerDead)
+                {
+                    parentObject = null;
+                    Teleport(GetItemFloorPosition(transform.position), targetPlayer.isInsideFactory);
+                    targetPlayer = null;
+                    DoAnimationClientRpc("reset");
+                }
+
+                return;
+            }
 
             timeSinceIntervalUpdate += Time.deltaTime;
 
@@ -107,6 +136,19 @@ namespace SCP4666.Doll
             {
                 timeSinceIntervalUpdate = 0f;
                 DoAIInterval();
+            }
+        }
+
+        void LateUpdate()
+        {
+            if (parentObject != null)
+            {
+                base.transform.rotation = parentObject.rotation;
+                base.transform.Rotate(clingRotOffsets[bodyPartIndex]);
+                base.transform.position = parentObject.position;
+                Vector3 positionOffset = clingPosOffsets[bodyPartIndex];
+                positionOffset = parentObject.rotation * positionOffset;
+                base.transform.position += positionOffset;
             }
         }
 
@@ -124,18 +166,6 @@ namespace SCP4666.Doll
             agent.isStopped = false;
         }
 
-        /*public void LateUpdate()
-        {
-            if (isEnemyDead) { return; }
-
-            Vector3 delta = transform.position - lastPosition;
-            float speed = delta.magnitude / Time.deltaTime;
-
-            animator.SetBool(hashRun, speed > 0f);
-
-            lastPosition = transform.position;
-        }*/
-
         public void DoAIInterval()
         {
             /*if (SCP4666AI.Instance == null)
@@ -148,6 +178,7 @@ namespace SCP4666.Doll
 
             if (targetPlayer == null)
             {
+                if (SCP4666AI.Instance == null) { return; }
                 if (!SetDestinationToPosition(SCP4666AI.Instance.transform.position, true))
                 {
                     SetDestinationToEntrance();
@@ -167,7 +198,7 @@ namespace SCP4666.Doll
                     logger.LogDebug("Attempt jump at player");
                     agent.isStopped = true;
                     inSpecialAnimation = true;
-                    DoAnimationClientRpc("jump");
+                    LungeClientRpc(targetPlayer.actualClientId);
                 }
             }
         }
@@ -201,46 +232,6 @@ namespace SCP4666.Doll
             if (IsServer) { agent.Warp(position); }
             transform.position = position;
             isInsideFactory = _isInsideFactory;
-        }
-
-        /* bodyparts
-         * 0 head
-         * 1 right arm
-         * 2 left arm
-         * 3 right leg
-         * 4 left leg
-         * 5 chest
-         * 6 feet
-         * 7 right hip
-         * 8 crotch
-         * 9 left shoulder
-         * 10 right shoulder */
-
-        public void OnCollideWithPlayer(PlayerControllerB player)
-        {
-            return; // TODO: For testing, remove later
-            if (!IsServer) { return; }
-            targetPlayer = player;
-            agent.isStopped = true;
-            inSpecialAnimation = false;
-            falling = false;
-            landing = false;
-            jumping = false;
-
-            clingingToPlayer = true;
-            bodyPartIndex = UnityEngine.Random.Range(0, 11);
-
-            transform.SetParent(targetPlayer.bodyParts[bodyPartIndex], false);
-            transform.localPosition = clingOffsets[bodyPartIndex];
-            transform.rotation = Quaternion.LookRotation(-targetPlayer.bodyParts[bodyPartIndex].forward, Vector3.up);
-
-            Debug.Log($"Doll clinging to body part {bodyPartIndex}");
-        }
-
-        internal void HitEnemyOnLocalClient()
-        {
-            if (isEnemyDead) { return; }
-            HitEnemyServerRpc();
         }
 
         public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
@@ -288,6 +279,7 @@ namespace SCP4666.Doll
             foreach (var player in StartOfRound.Instance.allPlayerScripts.ToList())
             {
                 if (player == null || !player.isPlayerControlled) { continue; }
+                if (player.isHostPlayerObject) { continue; } // TODO: For testing remove later
                 float distance = Vector3.Distance(transform.position, player.transform.position);
 
                 if (distance < closestDistance)
@@ -339,13 +331,13 @@ namespace SCP4666.Doll
                 if (t > 0.5f && !falling)
                 {
                     falling = true;
-                    DoAnimationClientRpc("fall");
+                    animator.SetTrigger("fall");
                     logger.LogDebug("finished fall animation");
                 }
                 if (t > 0.75f && !landing)
                 {
                     landing = true;
-                    DoAnimationClientRpc("land");
+                    animator.SetTrigger("land");
                     logger.LogDebug("finished land animation");
                 }
 
@@ -359,14 +351,53 @@ namespace SCP4666.Doll
             OnHitGround();
         }
 
+        /* bodyparts
+         * 0 head
+         * 1 right arm
+         * 2 left arm
+         * 3 right leg
+         * 4 left leg
+         * 5 chest
+         * 6 feet
+         * 7 right hip
+         * 8 crotch
+         * 9 left shoulder
+         * 10 right shoulder */
+
+        public void OnCollideWithPlayer(PlayerControllerB player)
+        {
+            //return; // TODO: For testing, remove later
+            if (!IsServer) { return; }
+            if (parentObject != null) { return; }
+            targetPlayer = player;
+            agent.isStopped = true;
+            inSpecialAnimation = false;
+            falling = false;
+            landing = false;
+            jumping = false;
+
+            bodyPartIndex = Utils.testing && Utils.isBeta ? DEBUG_bodyPartIndex : UnityEngine.Random.Range(0, 11);
+            parentObject = targetPlayer.bodyParts[bodyPartIndex];
+
+            ClingToPlayerClientRpc(targetPlayer.actualClientId, bodyPartIndex);
+
+            logger.LogDebug($"Doll clinging to body part {bodyPartIndex}");
+        }
+
+        internal void HitEnemyOnLocalClient()
+        {
+            if (isEnemyDead) { return; }
+            logger.LogDebug("Doll hit on client");
+            HitEnemyServerRpc();
+        }
 
         public void JumpAtTargetPlayer() // Animation: Gets called after winding up jump
         {
-            if (!IsServer) { return; }
+            //if (!IsServer) { return; }
 
             if (targetPlayer == null || targetPlayer.isInsideFactory != isInsideFactory)
             {
-                DoAnimationClientRpc("reset");
+                animator.SetTrigger("reset");
                 inSpecialAnimation = false;
                 targetPlayer = null;
                 return;
@@ -392,9 +423,22 @@ namespace SCP4666.Doll
 
         public void BitePlayer() // Animation: Gets called when doll biting player animation finishes a cycle
         {
-            if (!IsServer) { return; }
+            //if (!IsServer) { return; } // TODO: Test networking
+            //targetPlayer?.DamagePlayer(biteDamage, true, false);
+            if (targetPlayer == null) { return; }
+            if (targetPlayer.health < 20) { return; }
+            targetPlayer.health -= biteDamage;
 
-            targetPlayer!.DamagePlayer(biteDamage);
+            if (targetPlayer.IsLocalPlayer)
+            {
+                HUDManager.Instance.UpdateHealthUI(targetPlayer.health);
+            }
+        } // TODO: Test this
+
+        public void LocalPlayerDamaged() // TODO: Test this
+        {
+            if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer) { return; }
+            HitEnemyOnLocalClient();
         }
 
         [ClientRpc]
@@ -405,21 +449,20 @@ namespace SCP4666.Doll
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void HitEnemyServerRpc()
+        public void HitEnemyServerRpc() // TODO: test
         {
             if (!IsServer) { return; }
 
-            if (clingingToPlayer)
+            if (parentObject != null)
             {
-                clingingToPlayer = false;
-                transform.SetParent(null);
-                //rb.isKinematic = false;
+                parentObject = null;
                 jumping = false;
                 agent.isStopped = true;
-                isEnemyDead = true;
-                DoAnimationClientRpc("die");
-                Lunge(0f, 0f, 1f); // TODO: Figure out if this works
+                Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
             }
+
+            isEnemyDead = true;
+            DoAnimationClientRpc("die");
         }
 
         [ClientRpc]
@@ -427,6 +470,32 @@ namespace SCP4666.Doll
         {
             isBombDoll = dollIsBomb;
             bombMesh.SetActive(dollIsBomb);
+        }
+
+        [ClientRpc]
+        public void ClingToPlayerClientRpc(ulong clientId, int _bodyPartIndex)
+        {
+            targetPlayer = PlayerFromId(clientId);
+            inSpecialAnimation = false;
+            falling = false;
+            landing = false;
+            jumping = false;
+
+            bodyPartIndex = _bodyPartIndex;
+            parentObject = targetPlayer.bodyParts[bodyPartIndex];
+        }
+
+        [ClientRpc]
+        public void LungeClientRpc(ulong clientId)
+        {
+            targetPlayer = PlayerFromId(clientId);
+            animator.SetTrigger("jump");
+        }
+
+        [ClientRpc]
+        public void LungeClientRpc(float distance, float jumpHeight, float duration)
+        {
+
         }
     }
 }
