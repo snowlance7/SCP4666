@@ -32,12 +32,14 @@ namespace SCP4666
 
         public Transform turnCompass;
 
-        //public YulemanKnifeBehavior KnifeScript;
+        public GameObject ThrowingKnifePrefab;
 
         public GameObject ChildSackPrefab;
         public GameObject YulemanKnifePrefab;
         public GameObject EvilFleshDollPrefab;
         public GameObject FleshDollPrefab;
+
+        public Collider collider;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         Vector3 mainEntranceOutsidePosition;

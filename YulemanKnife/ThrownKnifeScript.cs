@@ -10,15 +10,19 @@ namespace SCP4666.YulemanKnife
     {
         private static ManualLogSource logger = LoggerInstance;
 
-#pragma warning disable 0649
+#pragma warning disable CS8618
         public AudioSource KnifeAudio;
         public AudioClip[] TearSFX;
         public AudioClip KnifeImpactSFX;
         public AudioClip KnifeWallPullSFX;
         public Transform KnifeTip;
-#pragma warning restore 0649
+        public GameObject KnifeMesh;
+#pragma warning restore CS8618
 
-        public YulemanKnifeBehavior knifeScript;
+        Transform? knifeThrownBy;
+        PlayerControllerB? playerThrownBy;
+
+        public SimpleEvent KnifeReturnedEvent = new SimpleEvent();
 
         List<Collider> EntitiesHitByKnife = [];
 
@@ -35,12 +39,23 @@ namespace SCP4666.YulemanKnife
         const float maxThrowDistance = 400f;
         const float returnSpeed = 1f;
 
-        public static void ThrowKnife(YulemanKnifeBehavior _knifeScript, Vector3 throwDirection)
+        public void OnEnable()
         {
-            ThrownKnifeScript throwingKnife = GameObject.Instantiate(_knifeScript.ThrowingKnifePrefab, _knifeScript.transform.position, Quaternion.identity).GetComponent<ThrownKnifeScript>();
-            throwingKnife.knifeScript = _knifeScript;
-            _knifeScript.thrownKnifeScript = throwingKnife;
-            throwingKnife.ThrowKnife(throwDirection);
+            KnifeMesh.SetActive(true);
+        }
+
+        public void OnDisable()
+        {
+            KnifeMesh.SetActive(false);
+            returning = false;
+            isThrown = false;
+            inWall = false;
+            EntitiesHitByKnife.Clear();
+        }
+
+        public void Start()
+        {
+            enabled = false;
         }
 
         public void Update()
@@ -51,12 +66,12 @@ namespace SCP4666.YulemanKnife
 
                 returnTime = Mathf.Clamp01(returnTime);
 
-                transform.position = Vector3.Lerp(postThrowPosition, knifeScript.transform.position, returnTime);
+                transform.position = Vector3.Lerp(postThrowPosition, knifeThrownBy!.position, returnTime);
 
                 if (returnTime >= timeToReturn)
                 {
-                    knifeScript.thrownKnifeScript = null;
-                    Destroy(this.gameObject);
+                    KnifeReturnedEvent.Invoke();
+                    enabled = false;
                 }
             }
         }
@@ -80,8 +95,17 @@ namespace SCP4666.YulemanKnife
             }
         }
 
-        void ThrowKnife(Vector3 throwDirection)
+        public void ThrowKnife(PlayerControllerB _playerThrownBy, Transform _knifeThrownBy, Vector3 throwDirection)
         {
+            playerThrownBy = _playerThrownBy;
+            ThrowKnife(_knifeThrownBy, throwDirection);
+        }
+
+        public void ThrowKnife(Transform _knifeThrownBy, Vector3 throwDirection)
+        {
+            enabled = true;
+            knifeThrownBy = _knifeThrownBy;
+            transform.position = knifeThrownBy.position + transform.forward; // TODO: Test this
             transform.rotation = Quaternion.LookRotation(throwDirection, KnifeTip.up);
             postThrowPosition = GetKnifeEndPoint(); // TODO: Test this
             isThrown = true;
@@ -106,12 +130,6 @@ namespace SCP4666.YulemanKnife
             isThrown = false;
             EntitiesHitByKnife.Clear();
 
-            /*if (isThrown)
-            {
-                isThrown = false;
-                return;
-            }*/
-
             if (hitWall)
             {
                 inWall = true;
@@ -131,41 +149,63 @@ namespace SCP4666.YulemanKnife
         {
             if (isThrown)
             {
-                isThrown = false;
                 StopKnife(false);
             }
-            else
+            if (inWall)
             {
                 KnifeAudio.PlayOneShot(KnifeWallPullSFX);
                 WalkieTalkie.TransmitOneShotAudio(KnifeAudio, KnifeWallPullSFX, 0.5f);
             }
 
+            isThrown = false;
             returning = true;
         }
 
-        public void OnTriggerEnter(Collider other)
+        public void OnTriggerStay(Collider other)
         {
-            if (isThrown)
+            if (!isThrown) { return; }
+
+            if (EntitiesHitByKnife.Contains(other) || !other.transform.TryGetComponent<IHittable>(out var iHit)) { return; }
+            logger.LogDebug("Hit");
+
+            if (other.gameObject.TryGetComponent(out PlayerControllerB player))
             {
-                logger.LogDebug("Hit " + other.gameObject.name);
-                if (!other.transform.TryGetComponent<IHittable>(out var iHit) || EntitiesHitByKnife.Contains(other)) { return; }
-                logger.LogDebug("Hit");
-                Vector3 forward = KnifeTip.transform.forward;
-                if (knifeScript.playerHeldBy != null)
+                if (player == playerThrownBy)
                 {
-                    if (other.gameObject.TryGetComponent(out PlayerControllerB player) && player == knifeScript.playerHeldBy) { return; } // TODO: Test this
-                    bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForceEnemy, forward, knifeScript.previousPlayerHeldBy, playHitSFX: true, 5);
-                    if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
+                    EntitiesHitByKnife.Add(other);
+                    return;
                 }
-                else
-                {
-                    if (!other.gameObject.TryGetComponent(out PlayerControllerB player)) { return; }
-                    if (localPlayer != player) { return; }
-                    player.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer, true, true, CauseOfDeath.Stabbing);
-                }
-                EntitiesHitByKnife.Add(other);
-                RoundManager.PlayRandomClip(KnifeAudio, TearSFX);
+
+                bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForcePlayer, KnifeTip.transform.forward, playerThrownBy, playHitSFX: true, 5);
+                if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
             }
+            else
+            {
+                if (SCP4666AI.Instance != null && other == SCP4666AI.Instance.collider)
+                {
+                    EntitiesHitByKnife.Add(other);
+                    return;
+                }
+
+                bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForceEnemy, KnifeTip.transform.forward, playerThrownBy, playHitSFX: true, 5);
+                if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
+            }
+
+            /*if (playerThrownBy != null)
+            {
+                if (other.gameObject.TryGetComponent(out PlayerControllerB player)) { return; } // TODO: Test this
+                bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForcePlayer, KnifeTip.transform.forward, playerThrownBy, playHitSFX: true, 5);
+                if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
+            }
+            else
+            {
+                if (!other.gameObject.TryGetComponent(out PlayerControllerB player)) { return; }
+                if (localPlayer != player) { return; }
+                player.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer, true, true, CauseOfDeath.Stabbing);
+            }*/
+
+            EntitiesHitByKnife.Add(other);
+            RoundManager.PlayRandomClip(KnifeAudio, TearSFX);
         }
     }
 }

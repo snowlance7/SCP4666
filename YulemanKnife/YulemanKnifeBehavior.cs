@@ -14,17 +14,22 @@ namespace SCP4666.YulemanKnife
     {
         private static ManualLogSource logger = LoggerInstance;
 
-#pragma warning disable 0649
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         public AudioSource KnifeAudio;
+
         public AudioClip[] SliceSFX;
         public AudioClip[] TearSFX;
         public AudioClip KnifeChargeSFX;
+
         public Transform KnifeTip;
+
         public GameObject ThrowingKnifePrefab;
+
         public GameObject KnifeMesh;
         public GameObject RuneMesh;
+
         public ScanNodeProperties ScanNode;
-#pragma warning restore 0649
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         List<Collider> EntitiesHitByKnife = [];
         public ThrownKnifeScript? thrownKnifeScript;
@@ -53,6 +58,14 @@ namespace SCP4666.YulemanKnife
         const float chargeTime = 1f;
         public const int knifeHitForceEnemy = 1;
         public const int knifeHitForcePlayer = 25;
+
+        public override void Start()
+        {
+            base.Start();
+
+            thrownKnifeScript = GameObject.Instantiate(ThrowingKnifePrefab, Vector3.zero, Quaternion.identity).GetComponent<ThrownKnifeScript>();
+            thrownKnifeScript.KnifeReturnedEvent.AddListener(KnifeReturned);
+        }
 
         public override void Update()
         {
@@ -83,10 +96,16 @@ namespace SCP4666.YulemanKnife
 
         public void ThrowKnife(Vector3 throwDirection)
         {
-            ThrownKnifeScript.ThrowKnife(this, throwDirection);
+            thrownKnifeScript?.ThrowKnife(playerHeldBy, transform, throwDirection);
             isThrown = true;
-            if (playerHeldBy == null) { return; }
             MakeKnifeVisible(false);
+        }
+
+        public void KnifeReturned()
+        {
+            callingKnife = false;
+            isThrown = false;
+            MakeKnifeVisible(true);
         }
 
         public override void PocketItem()
@@ -223,8 +242,8 @@ namespace SCP4666.YulemanKnife
                                 hasTriggeredFirstHit = true;
                                 goto IL_02f2;
                             }
-                            goto end_IL_027b;
-                        IL_02f2:
+                            goto end_IL_027b; 
+                        IL_02f2: // TODO: This doesnt work correctly here, only on ILSpy, fix this method
                             bool damageDealtSuccessfully = component.Hit(hitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
                             if (damageDealtSuccessfully && collision != null)
                             {
@@ -271,16 +290,6 @@ namespace SCP4666.YulemanKnife
             if (thrownKnifeScript == null) { return; }
             callingKnife = true;
             thrownKnifeScript.CallKnife();
-            StartCoroutine(CallKnifeCoroutine());
-        }
-
-        IEnumerator CallKnifeCoroutine()
-        {
-            yield return new WaitForSeconds(ThrownKnifeScript.timeToReturn);
-            callingKnife = false;
-            isThrown = false;
-            if (playerHeldBy == null) { yield break; }
-            MakeKnifeVisible(true);
         }
 
         public void MakeKnifeVisible(bool value) // TODO: Knife switching to rune is desynced for other clients
@@ -291,7 +300,7 @@ namespace SCP4666.YulemanKnife
             }
             isThrown = !value;
             KnifeMesh.SetActive(value);
-            if (isHeldByEnemy) { return; }
+            //if (isHeldByEnemy) { return; }
             RuneMesh.SetActive(!value);
         }
 
