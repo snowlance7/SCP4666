@@ -29,29 +29,6 @@ namespace SCP4666.Patches
             }
         }
 
-        /*[HarmonyPatch(nameof(PlayerControllerB.KillPlayer))]
-        [HarmonyPrefix]
-        public static bool KillPlayerPrefix(PlayerControllerB __instance)
-        {
-            try
-            {
-                ChildSackBehavior sack = GameObject.FindObjectsOfType<ChildSackBehavior>().Where(x => x.isInShipRoom).FirstOrDefault();
-                if (sack == null) { return true; }
-
-                StartOfRound.Instance.allPlayersDead = false;
-                sack.Activate();
-
-                
-
-                return false;
-            }
-            catch (Exception e)
-            {
-                LoggerInstance.LogError(e);
-                return;
-            }
-        }*/
-
         [HarmonyPatch(nameof(PlayerControllerB.KillPlayer))]
         [HarmonyPostfix]
         public static void KillPlayerPostfix(PlayerControllerB __instance)
@@ -68,7 +45,7 @@ namespace SCP4666.Patches
                 {
                     LoggerInstance.LogDebug("Players size was changed by sack, changing back to default size");
                     ChildSackBehavior.localPlayerSizeChangedFromSack = false;
-                    NetworkHandlerSCP4666.Instance.ChangePlayerSizeServerRpc(localPlayer.actualClientId, 1f);
+                    NetworkHandlerSCP4666.Instance?.ChangePlayerSizeServerRpc(localPlayer.actualClientId, 1f);
                 }
             }
             catch (Exception e)

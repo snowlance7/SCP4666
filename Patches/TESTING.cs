@@ -54,8 +54,14 @@ namespace SCP4666
                     break;
                 case "/doll":
                     LoggerInstance.LogDebug("Spawning doll");
-                    GameObject obj = GameObject.Instantiate(EvilDollPrefab, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
+                    GameObject obj = GameObject.Instantiate(EvilDollPrefab!, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
                     obj.GetComponent<NetworkObject>().Spawn(true);
+                    break;
+                case "/bombDoll":
+                    LoggerInstance.LogDebug("Spawning bomb doll");
+                    GameObject bombObj = GameObject.Instantiate(EvilDollPrefab!, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
+                    bombObj.GetComponent<NetworkObject>().Spawn(true);
+                    bombObj.GetComponent<EvilFleshDollAI>().SetBombDollClientRpc(true);
                     break;
                 default:
                     Utils.ChatCommand(args);

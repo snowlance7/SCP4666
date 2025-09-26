@@ -39,11 +39,11 @@ namespace SCP4666.YulemanKnife
 
         // Variables
         bool isCharged;
-        Coroutine? chargeCoroutine = null;
+        Coroutine? chargeCoroutine;
         RaycastHit[]? objectsHitByKnife;
         List<RaycastHit> objectsHitByKnifeList = new List<RaycastHit>();
         float timeAtLastDamageDealt;
-        public PlayerControllerB previousPlayerHeldBy;
+        public PlayerControllerB? previousPlayerHeldBy;
 
         bool callingKnife;
         public bool isThrown;
@@ -141,7 +141,7 @@ namespace SCP4666.YulemanKnife
             WalkieTalkie.TransmitOneShotAudio(KnifeAudio, KnifeChargeSFX, 1f);
             RoundManager.Instance.PlayAudibleNoise(playerHeldBy.transform.position, KnifeAudio.maxDistance, 0.5f, 0, playerHeldBy.isInHangarShipRoom);
             isCharged = true;
-            log("Knife is charged");
+            logger.LogDebug("Knife is charged");
         }
 
         void ChargeCancel()
@@ -179,7 +179,7 @@ namespace SCP4666.YulemanKnife
                 for (int i = 0; i < objectsHitByKnifeList.Count; i++)
                 {
                     string layerName = LayerMask.LayerToName(objectsHitByKnifeList[i].transform.gameObject.layer);
-                    log("Hit " + layerName);
+                    logger.LogDebug("Hit " + layerName);
                     if (objectsHitByKnifeList[i].transform.gameObject.layer == 8 || objectsHitByKnifeList[i].transform.gameObject.layer == 11)
                     {
                         hasHitSomething = true;

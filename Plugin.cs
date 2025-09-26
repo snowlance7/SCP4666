@@ -5,6 +5,7 @@ using GameNetcodeStuff;
 using HarmonyLib;
 using LethalLib.Modules;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -35,8 +36,6 @@ namespace SCP4666
 
         // SCP-4666 Configs
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-        public static ConfigEntry<bool> configEnableExtendedLogging;
-
         public static ConfigEntry<bool> configEnableSCP4666;
         public static ConfigEntry<string> config4666LevelRarities;
         public static ConfigEntry<string> config4666CustomLevelRarities;
@@ -121,8 +120,6 @@ namespace SCP4666
 
         void InitConfigs()
         {
-            configEnableExtendedLogging = Config.Bind("Debugging", "Enable Extended Logging", false, "Shows more logging in the console for debugging/testing");
-
             // SCP-4666 Configs
             configEnableSCP4666 = Config.Bind("SCP-4666", "Enable SCP-4666", true, "Set to false to disable spawning SCP-4666. Use this in combination with configKnifeLevelRarities and configKnifeCustomLevelRarities if you just want to use the knife.");
             config4666LevelRarities = Config.Bind("SCP-4666 Rarities", "Level Rarities", "ExperimentationLevel:5, AssuranceLevel:6, VowLevel:9, OffenseLevel:10, AdamanceLevel:20, MarchLevel:10, RendLevel:100, DineLevel:100, TitanLevel:75, ArtificeLevel:20, EmbrionLevel:25", "Rarities for each level. See default for formatting.");
@@ -211,14 +208,6 @@ namespace SCP4666
             }
         }
 
-        public static void log(string message)
-        {
-            if (configEnableExtendedLogging.Value)
-            {
-                LoggerInstance.LogDebug(message);
-            }
-        }
-
         public static void RebuildRig(PlayerControllerB pcb)
         {
             if (pcb != null && pcb.playerBodyAnimator != null)
@@ -250,56 +239,15 @@ namespace SCP4666
             return player.thisPlayerBody.localScale.y < 1f;
         }
 
-        public static bool CalculatePath(Vector3 fromPos, Vector3 toPos)
+        public void AllowPlayerDeathAfterDelay(float delay)
         {
-            Vector3 from = RoundManager.Instance.GetNavMeshPosition(fromPos, RoundManager.Instance.navHit, 1.75f);
-            Vector3 to = RoundManager.Instance.GetNavMeshPosition(toPos, RoundManager.Instance.navHit, 1.75f);
-
-            NavMeshPath path = new();
-            return NavMesh.CalculatePath(from, to, -1, path) && Vector3.Distance(path.corners[path.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(to, RoundManager.Instance.navHit, 2.7f)) <= 1.55f; // TODO: Test this
-        }
-
-        public static Vector3 GetPositionFrontOfPlayer(PlayerControllerB player, float distance = 1)
-        {
-            return player.playerEye.transform.position + player.playerEye.transform.forward * distance;
-        }
-
-        public static void GrabGrabbableObjectOnClient(GrabbableObject obj)
-        {
-            obj.transform.root.SetParent(null);
-            obj.isHeldByEnemy = false;
-
-            localPlayer.currentlyGrabbingObject = obj;
-            localPlayer.currentlyGrabbingObject.InteractItem();
-            if (localPlayer.currentlyGrabbingObject.grabbable && localPlayer.FirstEmptyItemSlot() != -1)
+            IEnumerator AllowPlayerDeathAfterDelay(float delay)
             {
-                localPlayer.playerBodyAnimator.SetBool("GrabInvalidated", value: false);
-                localPlayer.playerBodyAnimator.SetBool("GrabValidated", value: false);
-                localPlayer.playerBodyAnimator.SetBool("cancelHolding", value: false);
-                localPlayer.playerBodyAnimator.ResetTrigger("Throw");
-                //localPlayer.SetSpecialGrabAnimationBool(setTrue: true);
-                //localPlayer.isGrabbingObjectAnimation = true;
-                localPlayer.cursorIcon.enabled = false;
-                localPlayer.cursorTip.text = "";
-                localPlayer.twoHanded = localPlayer.currentlyGrabbingObject.itemProperties.twoHanded;
-                localPlayer.carryWeight = Mathf.Clamp(localPlayer.carryWeight + (localPlayer.currentlyGrabbingObject.itemProperties.weight - 1f), 1f, 10f);
-                if (localPlayer.currentlyGrabbingObject.itemProperties.grabAnimationTime > 0f)
-                {
-                    localPlayer.grabObjectAnimationTime = localPlayer.currentlyGrabbingObject.itemProperties.grabAnimationTime;
-                }
-                /*else
-                {
-                    localPlayer.grabObjectAnimationTime = 0.4f;
-                }*/
-
-                localPlayer.GrabObjectServerRpc(obj.NetworkObject);
-
-                if (localPlayer.grabObjectCoroutine != null)
-                {
-                    localPlayer.StopCoroutine(localPlayer.grabObjectCoroutine);
-                }
-                localPlayer.grabObjectCoroutine = localPlayer.StartCoroutine(localPlayer.GrabObject());
+                yield return new WaitForSeconds(delay);
+                StartOfRound.Instance.allowLocalPlayerDeath = true;
             }
+
+            StartCoroutine(AllowPlayerDeathAfterDelay(delay));
         }
 
         private static void InitializeNetworkBehaviours()

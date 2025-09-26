@@ -69,7 +69,7 @@ namespace SCP4666.YulemanKnife
 
                 if (Physics.Raycast(transform.position, nextPosition - transform.position, throwForce * Time.fixedDeltaTime, StartOfRound.Instance.collidersAndRoomMask)) // Detect wall
                 {
-                    log("Knife hit wall, stopping");
+                    logger.LogDebug("Knife hit wall, stopping");
                     isThrown = false;
                     StopKnife(true);
                 }
@@ -96,13 +96,13 @@ namespace SCP4666.YulemanKnife
                 return hit.point - transform.forward * offset;
             }
 
-            log("Couldnt find wall");
+            logger.LogDebug("Couldnt find wall");
             return ray.GetPoint(maxThrowDistance);
         }
 
         void StopKnife(bool hitWall)
         {
-            log("Stopping knife");
+            logger.LogDebug("Stopping knife");
             isThrown = false;
             EntitiesHitByKnife.Clear();
 
@@ -147,15 +147,15 @@ namespace SCP4666.YulemanKnife
         {
             if (isThrown)
             {
-                log("Hit " + other.gameObject.name);
+                logger.LogDebug("Hit " + other.gameObject.name);
                 if (!other.transform.TryGetComponent<IHittable>(out var iHit) || EntitiesHitByKnife.Contains(other)) { return; }
-                log("Hit");
+                logger.LogDebug("Hit");
                 Vector3 forward = KnifeTip.transform.forward;
                 if (knifeScript.playerHeldBy != null)
                 {
                     if (other.gameObject.TryGetComponent(out PlayerControllerB player) && player == knifeScript.playerHeldBy) { return; } // TODO: Test this
                     bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForceEnemy, forward, knifeScript.previousPlayerHeldBy, playHitSFX: true, 5);
-                    if (!hitSuccessful) { log("Hit unsuccessful"); return; }
+                    if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
                 }
                 else
                 {

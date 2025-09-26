@@ -20,19 +20,22 @@ namespace SCP4666
         public static SCP4666AI? Instance { get; private set; }
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-        public NetworkAnimator networkAnimator;
         public Transform RightHandTransform;
         public Transform ChildSackTransform;
-        public GameObject ChildSackPrefab;
-        public GameObject YulemanKnifePrefab;
+
         public AudioClip FootstepSFX;
         public AudioClip TeleportSFX;
         public AudioClip LaughSFX;
         public AudioClip RoarSFX;
+
         public GameObject YulemanMesh;
+
         public Transform turnCompass;
-        public ThrownKnifeScript thrownKnifeScript;
-        public YulemanKnifeBehavior KnifeScript;
+
+        //public YulemanKnifeBehavior KnifeScript;
+
+        public GameObject ChildSackPrefab;
+        public GameObject YulemanKnifePrefab;
         public GameObject EvilFleshDollPrefab;
         public GameObject FleshDollPrefab;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
@@ -82,7 +85,7 @@ namespace SCP4666
         public override void Start()
         {
             base.Start();
-            log("SCP-4666 Spawned");
+            logger.LogDebug("SCP-4666 Spawned");
 
             currentBehaviourStateIndex = (int)State.Spawning;
 
@@ -103,13 +106,13 @@ namespace SCP4666
             base.OnNetworkSpawn();
             if (Instance != null && Instance != this)
             {
-                log("There is already a SCP-4666 in the scene. Removing this one.");
+                logger.LogDebug("There is already a SCP-4666 in the scene. Removing this one.");
                 if (!IsServer) { return; }
                 NetworkObject.Despawn(true);
                 return;
             }
             Instance = this;
-            log("Finished spawning SCP-4666");
+            logger.LogDebug("Finished spawning SCP-4666");
         }
 
         public override void OnNetworkDespawn()
@@ -178,7 +181,7 @@ namespace SCP4666
                 inSpecialAnimationWithPlayer.takingFallDamage = false;
             }
 
-            if (stunNormalizedTimer > 0f || inSpecialAnimation)
+            if (inSpecialAnimation)
             {
                 agent.speed = 0f;
                 return;
@@ -187,9 +190,9 @@ namespace SCP4666
 
         public override void DoAIInterval()
         {
-            if (isEnemyDead || StartOfRound.Instance.allPlayersDead || stunNormalizedTimer > 0f)
+            if (isEnemyDead || StartOfRound.Instance.allPlayersDead)
             {
-                //log("Not doing ai interval");
+                //logger.LogDebug("Not doing ai interval");
                 return;
             };
 
@@ -229,13 +232,13 @@ namespace SCP4666
                     if ((timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance)
                             || (isAngry && timeSinceTeleport > teleportCooldown / 2 && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance / 2))
                     {
-                        log("can teleport");
+                        logger.LogDebug("can teleport");
                         if (!KnifeScript.isThrown
                             && !callingKnifeBack
                             && !inSpecialAnimation
                             && !teleporting)
                         {
-                            log("teleporting");
+                            logger.LogDebug("teleporting");
                             timeSinceTeleport = 0f;
                             teleporting = true;
                             TeleportToTargetPlayer();
@@ -248,9 +251,9 @@ namespace SCP4666
                         // Call knife back on cooldown if it is thrown
                         if (KnifeScript.isThrown && !callingKnifeBack && timeSinceKnifeThrown > knifeReturnCooldown) // TODO: Test this
                         {
-                            log("KnifeThrown: " + KnifeScript.isThrown);
+                            logger.LogDebug("KnifeThrown: " + KnifeScript.isThrown);
                             callingKnifeBack = true;
-                            networkAnimator.SetTrigger("grab"); // Calls CallKnifeBack() and CheckForKnife()
+                            DoAnimationClientRpc("grab"); // Calls CallKnifeBack() and CheckForKnife()
                             return;
                         }
 
@@ -260,14 +263,14 @@ namespace SCP4666
                             && !teleporting
                             && timeSinceKnifeThrown > knifeThrowCooldown)
                         {
-                            //log("Begin throwing knife");
+                            //logger.LogDebug("Begin throwing knife");
                             float distance = Vector3.Distance(transform.position, targetPlayer.transform.position);
                             if (distance > knifeThrowMinDistance && distance < knifeThrowMaxDistance)
                             {
                                 timeSinceKnifeThrown = 0f;
                                 inSpecialAnimation = true;
                                 transform.LookAt(targetPlayer.transform.position);
-                                networkAnimator.SetTrigger("throw"); // Calls ThrowKnife()
+                                DoAnimationClientRpc("throw"); // Calls ThrowKnife()
                                 return;
                             }
                         }
@@ -480,7 +483,7 @@ namespace SCP4666
         #region Overrides
         public override void KillEnemy(bool destroy = false) // Synced
         {
-            log("In KillEnemy()");
+            logger.LogDebug("In KillEnemy()");
             //CancelSpecialAnimationWithPlayer();
 
             if (KnifeScript.thrownKnifeScript != null)
@@ -514,10 +517,10 @@ namespace SCP4666
 
         public override void HitEnemy(int force = 0, PlayerControllerB playerWhoHit = null!, bool playHitSFX = true, int hitID = -1) // Runs on all clients
         {
-            log("In HitEnemy()");
+            logger.LogDebug("In HitEnemy()");
             if (isEnemyDead)
             {
-                log("Yuleman is dead");
+                logger.LogDebug("Yuleman is dead");
                 return;
             }
 
@@ -532,11 +535,11 @@ namespace SCP4666
             if (inSpecialAnimationWithPlayer != null)
             {
                 timesHitWhileAbducting++;
-                log($"Yuleman hit {timesHitWhileAbducting} times");
+                logger.LogDebug($"Yuleman hit {timesHitWhileAbducting} times");
                 if (timesHitWhileAbducting >= hitAmountToDropPlayer)
                 {
                     timesHitWhileAbducting = 0;
-                    log("Dropping player in sack");
+                    logger.LogDebug("Dropping player in sack");
                     CancelSpecialAnimationWithPlayer();
 
                     inSpecialAnimation = true;
@@ -582,13 +585,13 @@ namespace SCP4666
                 //DamagePlayerServerRpc(player.actualClientId, "slap");
                 DoAnimationServerRpc("slap");
             }
-            log("Finished OnCollideWithPlayer()");
+            logger.LogDebug("Finished OnCollideWithPlayer()");
         }
 
 
         public override void CancelSpecialAnimationWithPlayer()
         {
-            log("In CancelSpecialAnimationWithPlayer()");
+            logger.LogDebug("In CancelSpecialAnimationWithPlayer()");
 
             if (isPlayerInSack)
             {
@@ -606,7 +609,7 @@ namespace SCP4666
             if (localPlayer == inSpecialAnimationWithPlayer)
             {
                 FreezePlayer(localPlayer, false);
-                StartCoroutine(NetworkHandlerSCP4666.Instance!.AllowPlayerDeathAfterDelay(5f));
+                PluginInstance.AllowPlayerDeathAfterDelay(5f);
             }
 
             if (inSpecialAnimationWithPlayer != null)
@@ -623,7 +626,7 @@ namespace SCP4666
             timeSinceTeleport = 0f;
 
             base.CancelSpecialAnimationWithPlayer();
-            log("Finished CancelSpecialAnimationWithPlayer()");
+            logger.LogDebug("Finished CancelSpecialAnimationWithPlayer()");
         }
 
         public bool PlayerIsTargetable(PlayerControllerB playerScript)
@@ -640,21 +643,6 @@ namespace SCP4666
         #region Animation
         // Animation Functions
 
-        /*public void DoSlashDamageAnimation() // Synced
-        {
-            if (localPlayer != targetPlayer) { return; }
-            log("Damaging " + targetPlayer.playerUsername);
-            int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
-            targetPlayer.DamagePlayer(sliceDamage, true, true, CauseOfDeath.Stabbing, deathAnim);
-        }
-
-        public void DoSlapDamageAnimation() // Synced
-        {
-            if (localPlayer != targetPlayer) { return; }
-            log("Damaging " + targetPlayer.playerUsername);
-            targetPlayer.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.forward * 5);
-        }*/
-
         public void DoSlashDamageAnimation() // Animation
         {
             PlayerControllerB player = localPlayer;
@@ -668,7 +656,7 @@ namespace SCP4666
 
             if (angleToPlayer <= attackAngle)
             {
-                log("Damaging " + player.playerUsername);
+                logger.LogDebug("Damaging " + player.playerUsername);
                 int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
                 player.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer, true, true, CauseOfDeath.Stabbing, deathAnim);
             }
@@ -687,47 +675,47 @@ namespace SCP4666
 
             if (angleToPlayer <= attackAngle)
             {
-                log("Damaging " + player.playerUsername);
+                logger.LogDebug("Damaging " + player.playerUsername);
                 player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.position + transform.forward * 5);
             }
         }
 
-        public void SetInSpecialAnimation() // Synced
+        public void SetInSpecialAnimation() // Animation
         {
             inSpecialAnimation = true;
         }
 
-        public void UnsetInSpecialAnimation() // Synced
+        public void UnsetInSpecialAnimation() // Animation
         {
             inSpecialAnimation = false;
         }
 
-        public void CallKnifeBack() // Synced
+        public void CallKnifeBack() // Animation
         {
             inSpecialAnimation = true;
-            log("CallKnifeBack() called");
+            logger.LogDebug("CallKnifeBack() called");
 
             /*if (KnifeScript.playerHeldBy != null)
             {
-                log("Call knife back failed, player has knife");
+                logger.LogDebug("Call knife back failed, player has knife");
                 targetPlayer = KnifeScript.playerHeldBy;
                 isKnifeOwned = false;
                 return;
             }*/
 
             // Call knife back
-            //log("Player doesnt have knife, calling it back");
+            //logger.LogDebug("Player doesnt have knife, calling it back");
             KnifeScript.CallKnife();
         }
 
-        public void CheckForKnife() // Synced
+        public void CheckForKnife() // Animation
         {
-            log("CheckForKnife() called");
+            logger.LogDebug("CheckForKnife() called");
             callingKnifeBack = false;
 
             /*if (!isKnifeOwned)
             {
-                log("Knife not owned, starting roar animation");
+                logger.LogDebug("Knife not owned, starting roar animation");
                 creatureAnimator.SetTrigger("roar");
                 isAngry = true;
                 return;
@@ -736,19 +724,19 @@ namespace SCP4666
             GrabKnife();
         }
 
-        public void GrabKnife() // Synced
+        public void GrabKnife() // Animation
         {
-            log("GrabKnife() called");
+            logger.LogDebug("GrabKnife() called");
 
             timeSinceKnifeThrown = 0f;
             MakeKnifeVisible();
             isAngry = false;
-            log("Grabbed knife");
+            logger.LogDebug("Grabbed knife");
         }
 
-        public void ThrowKnife() // Synced
+        public void ThrowKnife() // Animation
         {
-            log("ThrowKnife() called");
+            logger.LogDebug("ThrowKnife() called");
             if (KnifeScript.isThrown) { return; }
             MakeKnifeInvisible();
             //inSpecialAnimation = false;
@@ -757,42 +745,42 @@ namespace SCP4666
             ThrowKnifeClientRpc(targetPlayer.actualClientId);
         }
 
-        public void MakeKnifeVisible() // Synced
+        public void MakeKnifeVisible() // Animation
         {
-            log("MakeKnifeVisible() called");
+            logger.LogDebug("MakeKnifeVisible() called");
             //if (!isKnifeOwned) { return; }
             //if (KnifeScript.isThrown) { return; }
             KnifeScript.MakeKnifeVisible(true);
         }
 
-        public void MakeKnifeInvisible() // Synced
+        public void MakeKnifeInvisible() // Animation
         {
-            log("MakeKnifeInvisible() called");
+            logger.LogDebug("MakeKnifeInvisible() called");
             KnifeScript.MakeKnifeVisible(false);
         }
 
-        public void PlayRoarSFX() // Synced
+        public void PlayRoarSFX() // Animation
         {
             creatureVoice.PlayOneShot(RoarSFX);
         }
 
-        public void PlayFootstepSFX() // Synced
+        public void PlayFootstepSFX() // Animation
         {
             creatureSFX.PlayOneShot(FootstepSFX);
         }
 
-        public void GrabPlayer() // Synced
+        public void GrabPlayer() // Animation
         {
-            log("GrabPlayer() called");
+            logger.LogDebug("GrabPlayer() called");
             if (inSpecialAnimationWithPlayer == null) { logger.LogError("inSpecialAnimationWithPlayer is null in GrabPlayer()"); return; }
             inSpecialAnimation = true;
             inSpecialAnimationWithPlayer.transform.SetParent(RightHandTransform);
             isGrabbingPlayer = true;
         }
 
-        public void PutPlayerInSack() // Synced
+        public void PutPlayerInSack() // Animation
         {
-            log("PutPlayerInSack() called");
+            logger.LogDebug("PutPlayerInSack() called");
             inSpecialAnimation = false;
             isGrabbingPlayer = false;
             if (inSpecialAnimationWithPlayer == null) { logger.LogError("inSpecialAnimationWithPlayer is null in PutPlayerInSack()"); return; }
@@ -814,12 +802,12 @@ namespace SCP4666
             inSpecialAnimationWithPlayer.voiceMuffledByEnemy = true;
             inSpecialAnimationWithPlayer.playerCollider.gameObject.SetActive(false);
             SwitchToBehaviourStateOnLocalClient((int)State.Abducting);
-            log(inSpecialAnimationWithPlayer.playerUsername + " put in yulemans sack");
+            logger.LogDebug(inSpecialAnimationWithPlayer.playerUsername + " put in yulemans sack");
         }
 
-        public void FinishStartAnimation() // Synced
+        public void FinishStartAnimation() // Animation
         {
-            log("In FinishStartAnimation()");
+            logger.LogDebug("In FinishStartAnimation()");
             if (IsServer)
             {
                 SwitchToBehaviourClientRpc((int)State.Chasing);
@@ -845,7 +833,7 @@ namespace SCP4666
             targetPlayer = PlayerFromId(targetPlayerId);
             Vector3 throwDirection = (targetPlayer.bodyParts[5].position - RightHandTransform.position).normalized;
             KnifeScript.ThrowKnife(throwDirection);
-            log("Knife was thrown");
+            logger.LogDebug("Knife was thrown");
         }*/
 
         [ClientRpc]
@@ -854,13 +842,13 @@ namespace SCP4666
             PlayerControllerB player = PlayerFromId(clientId);
             Vector3 throwDirection = (player.bodyParts[5].position - RightHandTransform.position).normalized;
             KnifeScript.ThrowKnife(throwDirection);
-            log("Knife was thrown");
+            logger.LogDebug("Knife was thrown");
         }
 
         [ClientRpc]
         public void KillPlayerInSackClientRpc()
         {
-            log("In KillPlayerInSackClientRpc()");
+            logger.LogDebug("In KillPlayerInSackClientRpc()");
             if (inSpecialAnimationWithPlayer == null) { logger.LogError("inSpecialAnimationWithPlayer is null in KillPlayerInSackClientRpc()"); return; }
             PlayerControllerB player = inSpecialAnimationWithPlayer;
             CancelSpecialAnimationWithPlayer();
@@ -872,8 +860,14 @@ namespace SCP4666
         public void DoAnimationServerRpc(string animationName)
         {
             if (!IsServer) { return; }
-            log("Doing " + animationName + " animation");
-            networkAnimator.SetTrigger(animationName);
+            logger.LogDebug("Doing " + animationName + " animation");
+            DoAnimationClientRpc(animationName);
+        }
+
+        [ClientRpc]
+        public void DoAnimationClientRpc(string animationName)
+        {
+            creatureAnimator.SetTrigger(animationName);
         }
 
         [ClientRpc]
@@ -915,25 +909,24 @@ namespace SCP4666
         [ServerRpc(RequireOwnership = false)]
         public void AddTargetPlayerServerRpc(ulong clientId)
         {
-            if (IsServer)
+            if (!IsServer) { return; }
+
+            PlayerControllerB player = PlayerFromId(clientId);
+
+            if (currentBehaviourStateIndex == (int)State.Spawning)
             {
-                PlayerControllerB player = PlayerFromId(clientId);
-
-                if (currentBehaviourStateIndex == (int)State.Spawning)
-                {
-                    networkAnimator.SetTrigger("start");
-                }
-
-                if (TargetPlayers.Contains(player)) { return; }
-                TargetPlayers.Add(player);
-
-                if (currentBehaviourStateIndex == (int)State.Abducting) // TODO: Test this
-                {
-                    SwitchToBehaviourClientRpc((int)State.Chasing);
-                }
-
-                log($"Added {player.playerUsername} to targeted players");
+                DoAnimationClientRpc("start");
             }
+
+            if (TargetPlayers.Contains(player)) { return; }
+            TargetPlayers.Add(player);
+
+            if (currentBehaviourStateIndex == (int)State.Abducting) // TODO: Test this
+            {
+                SwitchToBehaviourClientRpc((int)State.Chasing);
+            }
+
+            logger.LogDebug($"Added {player.playerUsername} to targeted players");
         }
 
         [ClientRpc]

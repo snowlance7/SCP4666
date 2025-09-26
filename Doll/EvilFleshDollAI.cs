@@ -52,6 +52,10 @@ namespace SCP4666.Doll
 
         bool isEnemyDead;
 
+        bool bombTicking;
+
+        bool damagingPlayer;
+
         //bool clingingToPlayer;
         int bodyPartIndex;
         Transform? parentObject;
@@ -115,6 +119,16 @@ namespace SCP4666.Doll
         {
             if (inSpecialAnimation || !IsServer || isEnemyDead || jumping) { return; }
 
+            if (bombTicking)
+            {
+                if (!audioSource.isPlaying)
+                {
+                    bombTicking = false;
+                    Landmine.SpawnExplosion(transform.position, true);
+                    NetworkObject.Despawn(true);
+                }
+            }
+
             if (parentObject != null)
             {
                 if (targetPlayer == null) { return; }
@@ -122,9 +136,7 @@ namespace SCP4666.Doll
                 if (targetPlayer.isPlayerDead)
                 {
                     parentObject = null;
-                    Teleport(GetItemFloorPosition(transform.position), targetPlayer.isInsideFactory);
-                    targetPlayer = null;
-                    DoAnimationClientRpc("reset");
+                    DropDollClientRpc();
                 }
 
                 return;
@@ -279,7 +291,7 @@ namespace SCP4666.Doll
             foreach (var player in StartOfRound.Instance.allPlayerScripts.ToList())
             {
                 if (player == null || !player.isPlayerControlled) { continue; }
-                if (player.isHostPlayerObject) { continue; } // TODO: For testing remove later
+                //if (player.isHostPlayerObject) { continue; } // TODO: For testing remove later
                 float distance = Vector3.Distance(transform.position, player.transform.position);
 
                 if (distance < closestDistance)
@@ -368,7 +380,7 @@ namespace SCP4666.Doll
         {
             //return; // TODO: For testing, remove later
             if (!IsServer) { return; }
-            if (parentObject != null) { return; }
+            if (parentObject != null || isEnemyDead || inSpecialAnimation) { return; }
             targetPlayer = player;
             agent.isStopped = true;
             inSpecialAnimation = false;
@@ -382,13 +394,6 @@ namespace SCP4666.Doll
             ClingToPlayerClientRpc(targetPlayer.actualClientId, bodyPartIndex);
 
             logger.LogDebug($"Doll clinging to body part {bodyPartIndex}");
-        }
-
-        internal void HitEnemyOnLocalClient()
-        {
-            if (isEnemyDead) { return; }
-            logger.LogDebug("Doll hit on client");
-            HitEnemyServerRpc();
         }
 
         public void JumpAtTargetPlayer() // Animation: Gets called after winding up jump
@@ -407,37 +412,26 @@ namespace SCP4666.Doll
             Lunge(distanceToJumpAtPlayer * 2, jumpHeight, jumpDuration);
         }
 
-        public void FinishHangAnimation() // Animation: Gets called after attaching to player
-        {
-            if (!IsServer) { return; }
-
-            if (isBombDoll)
-            {
-                // TODO
-            }
-            else
-            {
-                DoAnimationClientRpc("attack");
-            }
-        }
-
         public void BitePlayer() // Animation: Gets called when doll biting player animation finishes a cycle
         {
-            //if (!IsServer) { return; } // TODO: Test networking
-            //targetPlayer?.DamagePlayer(biteDamage, true, false);
             if (targetPlayer == null) { return; }
-            if (targetPlayer.health < 20) { return; }
-            targetPlayer.health -= biteDamage;
+            damagingPlayer = true;
+            targetPlayer!.DamagePlayer(biteDamage, false);
+            damagingPlayer = false;
+            logger.LogDebug("Player bitten by doll");
+        } // TODO: Test this on network
 
-            if (targetPlayer.IsLocalPlayer)
-            {
-                HUDManager.Instance.UpdateHealthUI(targetPlayer.health);
-            }
-        } // TODO: Test this
+        internal void HitEnemyOnLocalClient()
+        {
+            if (isEnemyDead) { return; }
+            logger.LogDebug("Doll hit on client");
+            HitEnemyServerRpc();
+        }
 
         public void LocalPlayerDamaged() // TODO: Test this
         {
-            if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer) { return; }
+            logger.LogDebug("Local player damaged");
+            if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer || damagingPlayer) { return; }
             HitEnemyOnLocalClient();
         }
 
@@ -453,16 +447,8 @@ namespace SCP4666.Doll
         {
             if (!IsServer) { return; }
 
-            if (parentObject != null)
-            {
-                parentObject = null;
-                jumping = false;
-                agent.isStopped = true;
-                Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
-            }
-
-            isEnemyDead = true;
-            DoAnimationClientRpc("die");
+            agent.isStopped = true;
+            KillDollClientRpc();
         }
 
         [ClientRpc]
@@ -483,6 +469,17 @@ namespace SCP4666.Doll
 
             bodyPartIndex = _bodyPartIndex;
             parentObject = targetPlayer.bodyParts[bodyPartIndex];
+
+            if (isBombDoll)
+            {
+                animator.SetTrigger("hang");
+                audioSource.Play();
+                bombTicking = true;
+            }
+            else
+            {
+                animator.SetTrigger("hangBite");
+            }
         }
 
         [ClientRpc]
@@ -493,9 +490,30 @@ namespace SCP4666.Doll
         }
 
         [ClientRpc]
-        public void LungeClientRpc(float distance, float jumpHeight, float duration)
+        public void KillDollClientRpc()
         {
+            animator.SetTrigger("die");
+            parentObject = null;
+            jumping = false;
+            landing = false;
+            falling = false;
+            inSpecialAnimation = false;
+            isEnemyDead = true;
+            targetPlayer = null;
+            Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
+        }
 
+        [ClientRpc]
+        public void DropDollClientRpc()
+        {
+            animator.SetTrigger("reset");
+            parentObject = null;
+            jumping = false;
+            landing = false;
+            falling = false;
+            inSpecialAnimation = false;
+            targetPlayer = null;
+            Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
         }
     }
 }
