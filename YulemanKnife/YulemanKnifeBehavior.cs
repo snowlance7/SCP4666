@@ -7,6 +7,7 @@ using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using static SCP4666.Plugin;
+using static UnityEngine.Rendering.DebugUI;
 
 namespace SCP4666.YulemanKnife
 {
@@ -51,7 +52,7 @@ namespace SCP4666.YulemanKnife
         public PlayerControllerB? previousPlayerHeldBy;
 
         bool callingKnife;
-        public bool isThrown;
+        bool isThrown;
         Vector3 rotationOffset = new Vector3(-30f, -90f, 90f);
         Vector3 positionOffset = new Vector3(-0.2f, 0.26f, -0.02f);
 
@@ -65,6 +66,12 @@ namespace SCP4666.YulemanKnife
 
             thrownKnifeScript = GameObject.Instantiate(ThrowingKnifePrefab, Vector3.zero, Quaternion.identity).GetComponent<ThrownKnifeScript>();
             thrownKnifeScript.KnifeReturnedEvent.AddListener(KnifeReturned);
+        }
+
+        public override void OnDestroy()
+        {
+            Destroy(thrownKnifeScript?.gameObject);
+            base.OnDestroy();
         }
 
         public override void Update()
@@ -96,15 +103,18 @@ namespace SCP4666.YulemanKnife
 
         public void ThrowKnife(Vector3 throwDirection)
         {
-            thrownKnifeScript?.ThrowKnife(playerHeldBy, transform, throwDirection);
-            isThrown = true;
             MakeKnifeVisible(false);
+            playerHeldBy.activatingItem = true;
+            isThrown = true;
+            thrownKnifeScript?.ThrowKnife(playerHeldBy, transform, throwDirection);
         }
 
         public void KnifeReturned()
         {
+            logger.LogDebug("Knife returned");
             callingKnife = false;
             isThrown = false;
+            previousPlayerHeldBy!.activatingItem = false;
             MakeKnifeVisible(true);
         }
 
@@ -121,7 +131,9 @@ namespace SCP4666.YulemanKnife
 
             if (isThrown)
             {
+                logger.LogDebug("Knife is thrown");
                 if (callingKnife) { return; }
+                logger.LogDebug("Calling knife");
                 CallKnife();
                 return;
             }
@@ -137,7 +149,6 @@ namespace SCP4666.YulemanKnife
 
                 if (isCharged)
                 {
-                    //ChargeCancel();
                     ThrowKnife(playerHeldBy.playerEye.transform.forward);
                 }
                 else
@@ -146,7 +157,6 @@ namespace SCP4666.YulemanKnife
                     HitKnife();
                 }
 
-                //isCharged = false;
                 ChargeCancel();
             }
         }
@@ -165,18 +175,15 @@ namespace SCP4666.YulemanKnife
 
         void ChargeCancel()
         {
-            if (chargeCoroutine != null)
-            {
-                StopCoroutine(chargeCoroutine);
-                chargeCoroutine = null;
-            }
+            logger.LogDebug("ChargeCancel");
+            StopCoroutine(chargeCoroutine);
 
             isCharged = false;
             rotationOffset = RotationOffsetStab;
             positionOffset = PositionOffsetStab;
         }
 
-        public void HitKnife(bool cancel = false)
+        public void HitKnife(bool cancel = false) // TODO: Need to fix this up?
         {
             if (!IsOwner) { return; }
             if (previousPlayerHeldBy == null)
@@ -198,7 +205,7 @@ namespace SCP4666.YulemanKnife
                 for (int i = 0; i < objectsHitByKnifeList.Count; i++)
                 {
                     string layerName = LayerMask.LayerToName(objectsHitByKnifeList[i].transform.gameObject.layer);
-                    logger.LogDebug("Hit " + layerName);
+                    //logger.LogDebug("Hit " + layerName);
                     if (objectsHitByKnifeList[i].transform.gameObject.layer == 8 || objectsHitByKnifeList[i].transform.gameObject.layer == 11)
                     {
                         hasHitSomething = true;
@@ -243,7 +250,7 @@ namespace SCP4666.YulemanKnife
                                 goto IL_02f2;
                             }
                             goto end_IL_027b; 
-                        IL_02f2: // TODO: This doesnt work correctly here, only on ILSpy, fix this method
+                        IL_02f2:
                             bool damageDealtSuccessfully = component.Hit(hitForce, forward, previousPlayerHeldBy, playHitSFX: true, 5);
                             if (damageDealtSuccessfully && collision != null)
                             {
@@ -279,7 +286,7 @@ namespace SCP4666.YulemanKnife
             }
         }
         
-        private void HitSurfaceWithKnife(int hitSurfaceID)
+        void HitSurfaceWithKnife(int hitSurfaceID)
         {
             KnifeAudio.PlayOneShot(StartOfRound.Instance.footstepSurfaces[hitSurfaceID].hitSurfaceSFX);
             WalkieTalkie.TransmitOneShotAudio(KnifeAudio, StartOfRound.Instance.footstepSurfaces[hitSurfaceID].hitSurfaceSFX);
@@ -287,20 +294,13 @@ namespace SCP4666.YulemanKnife
 
         public void CallKnife()
         {
-            if (thrownKnifeScript == null) { return; }
             callingKnife = true;
-            thrownKnifeScript.CallKnife();
+            thrownKnifeScript?.CallKnife();
         }
 
         public void MakeKnifeVisible(bool value) // TODO: Knife switching to rune is desynced for other clients
         {
-            if (playerHeldBy != null)
-            {
-                playerHeldBy.activatingItem = !value;
-            }
-            isThrown = !value;
             KnifeMesh.SetActive(value);
-            //if (isHeldByEnemy) { return; }
             RuneMesh.SetActive(!value);
         }
 

@@ -51,6 +51,7 @@ namespace SCP4666.YulemanKnife
             isThrown = false;
             inWall = false;
             EntitiesHitByKnife.Clear();
+            returnTime = 0f;
         }
 
         public void Start()

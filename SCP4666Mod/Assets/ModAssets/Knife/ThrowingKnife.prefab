@@ -57,13 +57,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5220786713276686701}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: 0.7071068, w: 0.70710677}
-  m_LocalPosition: {x: -0.020598654, y: -0.020318411, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: 1, w: 0.0000014603136}
+  m_LocalPosition: {x: -0.00028029262, y: -0.04091707, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 6843200044708266910}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
 --- !u!33 &2343104376111454384
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -269,7 +269,7 @@ MonoBehaviour:
   KnifeImpactSFX: {fileID: 8300000, guid: a9e03dd1fb4346c4a8e95b98ba0028c1, type: 3}
   KnifeWallPullSFX: {fileID: 8300000, guid: 2f84ce99fb1e1f446a32632d8a50410c, type: 3}
   KnifeTip: {fileID: 6843200044708266910}
-  knifeScript: {fileID: 0}
+  KnifeMesh: {fileID: 5220786713276686701}
 --- !u!54 &524793123720820934
 Rigidbody:
   m_ObjectHideFlags: 0
