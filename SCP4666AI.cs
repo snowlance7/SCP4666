@@ -60,6 +60,8 @@ namespace SCP4666
         float timeSinceTeleport;
         float timeSinceKnifeThrown;
         float timeSinceGrabPlayer;
+        float timeSinceGroundSlam;
+        float timeSinceDollSpawning;
 
         bool teleporting;
 
@@ -68,7 +70,7 @@ namespace SCP4666
 
         int timesHitWhileAbducting;
 
-        int damageTakenWithoutDamaging;
+        int timesHitWithoutDamagingPlayers;
 
         // Constants
         readonly Vector3 insideScale = new Vector3(1.5f, 1.5f, 1.5f);
@@ -83,6 +85,17 @@ namespace SCP4666
         const float knifeThrowMaxDistance = 10f;
         const float hitAmountToDropPlayer = 5;
         const int slapDamage = 10;
+        const int minPresentsToSpawn = 3;
+        const int maxPresentsToSpawn = 6;
+
+        const int minDollsToDrop = 1;
+        const int maxDollsToDrop = 3;
+        const int minDollsToSpawn = 2;
+        const int maxDollsToSpawn = 5;
+        const float groundSlamCooldown = 15f;
+        const float dollSpawningCooldown = 30f;
+        const int maxHitsToGroundSlam = 3;
+
 
         public enum State
         {
@@ -105,7 +118,7 @@ namespace SCP4666
 
             if (!IsServer) { return; }
 
-            int num = UnityEngine.Random.Range(3, 6);
+            int num = UnityEngine.Random.Range(minPresentsToSpawn, maxPresentsToSpawn);
             SpawnPresents(num);
 
             thrownKnifeScript = GameObject.Instantiate(ThrowingKnifePrefab, Vector3.zero, Quaternion.identity).GetComponent<ThrownKnifeScript>();
@@ -168,6 +181,8 @@ namespace SCP4666
             timeSinceTeleport += Time.deltaTime;
             timeSinceKnifeThrown += Time.deltaTime;
             timeSinceGrabPlayer += Time.deltaTime;
+            timeSinceGroundSlam += Time.deltaTime;
+            timeSinceDollSpawning += Time.deltaTime;
 
             if (currentBehaviourStateIndex == (int)State.Spawning)
             {
@@ -521,6 +536,7 @@ namespace SCP4666
                 int sackValue = UnityEngine.Random.Range(configSackMinValue.Value, configSackMaxValue.Value + 1);
                 SetSackValueClientRpc(sack.NetworkObject, sackValue);
 
+
             }
 
             base.KillEnemy(destroy);
@@ -543,6 +559,8 @@ namespace SCP4666
                 return;
             }
 
+            timesHitWithoutDamagingPlayers += 1;
+
             if (inSpecialAnimationWithPlayer != null)
             {
                 timesHitWhileAbducting++;
@@ -556,7 +574,17 @@ namespace SCP4666
                     inSpecialAnimation = true;
                     creatureAnimator.SetTrigger("roar");
                     SwitchToBehaviourStateOnLocalClient((int)State.Chasing);
+                    return;
                 }
+            }
+
+            if (!IsServer) { return; } // TODO: Test this
+
+            if (timesHitWithoutDamagingPlayers >= maxHitsToGroundSlam && timeSinceGroundSlam > groundSlamCooldown)
+            {
+                logger.LogDebug("Performing ground slam");
+                inSpecialAnimation = true;
+                DoAnimationClientRpc("groundSlam"); // TODO: Continue here
             }
         }
 
@@ -587,13 +615,12 @@ namespace SCP4666
 
             if (!isThrowingKnife)
             {
-                //DamagePlayerServerRpc(player.actualClientId, "slash");
                 DoAnimationServerRpc("slash");
             }
             else
             {
-                //DamagePlayerServerRpc(player.actualClientId, "slap");
-                DoAnimationServerRpc("slap");
+                bool sackSlap = UnityEngine.Random.Range(0, 2) == 0;
+                DoAnimationServerRpc(sackSlap ? "sackSlap" : "slap");
             }
             logger.LogDebug("Finished OnCollideWithPlayer()");
         }
@@ -858,8 +885,6 @@ namespace SCP4666
         {
             if (!IsServer) { return; }
             inSpecialAnimation = true;
-            //targetPlayer = PlayerFromId(clientId);
-            //inSpecialAnimationWithPlayer = targetPlayer;
             inSpecialAnimationWithPlayer = PlayerFromId(clientId);
             GrabPlayerClientRpc(clientId);
         }
@@ -868,8 +893,6 @@ namespace SCP4666
         public void GrabPlayerClientRpc(ulong clientId)
         {
             inSpecialAnimation = true;
-            //targetPlayer = PlayerFromId(clientId);
-            //inSpecialAnimationWithPlayer = targetPlayer;
             inSpecialAnimationWithPlayer = PlayerFromId(clientId);
             inSpecialAnimationWithPlayer.inSpecialInteractAnimation = true;
             inSpecialAnimationWithPlayer.snapToServerPosition = true;
