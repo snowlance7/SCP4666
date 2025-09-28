@@ -452,10 +452,10 @@ namespace SCP4666.Doll
         }
 
         [ClientRpc]
-        public void SetBombDollClientRpc(bool dollIsBomb)
+        public void SetBombDollClientRpc()
         {
-            isBombDoll = dollIsBomb;
-            bombMesh.SetActive(dollIsBomb);
+            isBombDoll = true;
+            bombMesh.SetActive(true);
         }
 
         [ClientRpc]

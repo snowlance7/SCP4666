@@ -34,7 +34,7 @@ namespace SCP4666
         {
             if (!Utils.isBeta) { return; }
             if (!Utils.testing) { return; }
-
+            SCP4666AI.Instance?.DEBUG_DoGroundSlam();
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SubmitChat_performed))]
@@ -61,7 +61,7 @@ namespace SCP4666
                     LoggerInstance.LogDebug("Spawning bomb doll");
                     GameObject bombObj = GameObject.Instantiate(EvilDollPrefab!, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
                     bombObj.GetComponent<NetworkObject>().Spawn(true);
-                    bombObj.GetComponent<EvilFleshDollAI>().SetBombDollClientRpc(true);
+                    bombObj.GetComponent<EvilFleshDollAI>().SetBombDollClientRpc();
                     break;
                 default:
                     Utils.ChatCommand(args);
