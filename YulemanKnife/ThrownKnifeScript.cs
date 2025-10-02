@@ -171,14 +171,16 @@ namespace SCP4666.YulemanKnife
 
             if (other.gameObject.TryGetComponent(out PlayerControllerB player))
             {
-                if (player == playerThrownBy)
+                if (player == playerThrownBy || !player.isPlayerControlled)
                 {
                     EntitiesHitByKnife.Add(other);
                     return;
                 }
 
-                bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForcePlayer, KnifeTip.transform.forward, playerThrownBy, playHitSFX: true, 5);
-                if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
+                if (localPlayer == player)
+                {
+                    localPlayer.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer);
+                }
             }
             else
             {
@@ -191,19 +193,6 @@ namespace SCP4666.YulemanKnife
                 bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForceEnemy, KnifeTip.transform.forward, playerThrownBy, playHitSFX: true, 5);
                 if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
             }
-
-            /*if (playerThrownBy != null)
-            {
-                if (other.gameObject.TryGetComponent(out PlayerControllerB player)) { return; } // TODO: Test this
-                bool hitSuccessful = iHit.Hit(YulemanKnifeBehavior.knifeHitForcePlayer, KnifeTip.transform.forward, playerThrownBy, playHitSFX: true, 5);
-                if (!hitSuccessful) { logger.LogDebug("Hit unsuccessful"); return; }
-            }
-            else
-            {
-                if (!other.gameObject.TryGetComponent(out PlayerControllerB player)) { return; }
-                if (localPlayer != player) { return; }
-                player.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer, true, true, CauseOfDeath.Stabbing);
-            }*/
 
             EntitiesHitByKnife.Add(other);
             RoundManager.PlayRandomClip(KnifeAudio, TearSFX);

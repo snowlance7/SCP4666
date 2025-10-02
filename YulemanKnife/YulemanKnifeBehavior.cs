@@ -176,7 +176,10 @@ namespace SCP4666.YulemanKnife
         void ChargeCancel()
         {
             logger.LogDebug("ChargeCancel");
-            StopCoroutine(chargeCoroutine);
+            if (chargeCoroutine != null)
+            {
+                StopCoroutine(chargeCoroutine);
+            }
 
             isCharged = false;
             rotationOffset = RotationOffsetStab;

@@ -7809,7 +7809,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9168289568358254895}
   - component: {fileID: 6881798697577971615}
-  - component: {fileID: 6752649890842485092}
+  - component: {fileID: 4223419698801488440}
   m_Layer: 19
   m_Name: AttackArea
   m_TagString: Enemy
@@ -7853,7 +7853,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.4949619, y: 2.0436952, z: 0.860238}
   m_Center: {x: -0.05077523, y: 0.15175223, z: 0.20550498}
---- !u!114 &6752649890842485092
+--- !u!114 &4223419698801488440
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -7862,12 +7862,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 3711381969815206943}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6d7127b8f98ca8ec9896b384a71d39a2, type: 3}
+  m_Script: {fileID: -1335561034, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   mainScript: {fileID: 190194967877461254}
-  canCollideWithEnemies: 0
-  onlyCollideWhenGrounded: 0
 --- !u!1 &3751436778414715527
 GameObject:
   m_ObjectHideFlags: 0

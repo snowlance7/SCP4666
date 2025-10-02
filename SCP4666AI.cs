@@ -22,10 +22,10 @@ namespace SCP4666
 
         // DEBUG STUFF
 
-        bool DEBUG_SpawnDolls = false;
-        bool DEBUG_GroundSlam = false;
-        bool DEBUG_ThrowKnife = false;
-        bool DEBUG_Teleport = false;
+        bool DEBUG_SpawnDolls = true;
+        bool DEBUG_GroundSlam = true;
+        bool DEBUG_ThrowKnife = true;
+        bool DEBUG_Teleport = true;
         bool DEBUG_TargetHost = true;
 
         public static SCP4666AI? Instance { get; private set; }
@@ -531,7 +531,7 @@ namespace SCP4666
         public override void KillEnemy(bool destroy = false) // Synced
         {
             logger.LogDebug("In KillEnemy()");
-            //CancelSpecialAnimationWithPlayer();
+            CancelSpecialAnimationWithPlayer();
 
             thrownKnifeScript.enabled = false;
 
@@ -540,19 +540,20 @@ namespace SCP4666
             if (IsServer)
             {
                 // Spawn YulemanKnife
-                YulemanKnifeBehavior newKnife = GameObject.Instantiate(YulemanKnifePrefab, RightHandTransform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<YulemanKnifeBehavior>();
+                YulemanKnifeBehavior newKnife = GameObject.Instantiate(YulemanKnifePrefab, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<YulemanKnifeBehavior>();
                 newKnife.NetworkObject.Spawn();
 
-                int knifeValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value + 1);
-                SetKnifeValueClientRpc(newKnife.NetworkObject, knifeValue);
+                //int knifeValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value + 1);
+                //SetKnifeValueClientRpc(newKnife.NetworkObject, knifeValue);
 
                 // Spawn ChildSack
-                ChildSackBehavior sack = GameObject.Instantiate(ChildSackPrefab, RightHandTransform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<ChildSackBehavior>();
+                ChildSackBehavior sack = GameObject.Instantiate(ChildSackPrefab, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<ChildSackBehavior>();
                 sack.NetworkObject.Spawn();
 
-                int sackValue = UnityEngine.Random.Range(configSackMinValue.Value, configSackMaxValue.Value + 1);
-                SetSackValueClientRpc(sack.NetworkObject, sackValue);
+                //int sackValue = UnityEngine.Random.Range(configSackMinValue.Value, configSackMaxValue.Value + 1);
+                //SetSackValueClientRpc(sack.NetworkObject, sackValue);
 
+                // Spawn Dolls
                 int dollsToDrop = UnityEngine.Random.Range(minDollsToDrop, maxDollsToDrop + 1);
                 for (int i = 0; i < dollsToDrop; i++)
                 {
@@ -564,7 +565,7 @@ namespace SCP4666
             base.KillEnemy(destroy);
         }
 
-        public override void HitEnemy(int force = 0, PlayerControllerB playerWhoHit = null!, bool playHitSFX = true, int hitID = -1) // Runs on all clients
+        public override void HitEnemy(int force = 0, PlayerControllerB playerWhoHit = null!, bool playHitSFX = true, int hitID = -1) // Synced
         {
             logger.LogDebug("In HitEnemy()");
             if (isEnemyDead)
@@ -574,9 +575,11 @@ namespace SCP4666
             }
 
             enemyHP -= force;
+            logger.LogDebug("hp: " + enemyHP);
 
             if (enemyHP <= 0)
             {
+                logger.LogDebug("Attempt killing yuleman on server");
                 KillEnemyOnOwnerClient();
                 return;
             }
@@ -707,6 +710,7 @@ namespace SCP4666
             {
                 DoAnimationClientRpc("reset");
                 inSpecialAnimation = false;
+                MakeKnifeVisible();
                 return;
             }
 
@@ -826,7 +830,6 @@ namespace SCP4666
             if (isThrowingKnife) { return; }
 
             isThrowingKnife = true;
-            MakeKnifeInvisible();
 
             //inSpecialAnimation = false;
 
@@ -837,6 +840,7 @@ namespace SCP4666
         public void MakeKnifeVisible() // Animation
         {
             logger.LogDebug("MakeKnifeVisible() called");
+            if (isThrowingKnife) { return; }
             KnifeMesh.SetActive(true);
         }
 
@@ -1014,7 +1018,7 @@ namespace SCP4666
             if (!netRef.TryGet(out NetworkObject netobj)) { return; }
             if (!netobj.TryGetComponent(out YulemanKnifeBehavior knife)) { return; }
             knife.SetScrapValue(value);
-            knife.FallToGround();
+            //knife.FallToGround();
         }
 
         [ClientRpc]

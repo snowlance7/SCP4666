@@ -268,7 +268,7 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 7c913187d9972ec4ea86a53b70a327e5, type: 3}
   KnifeImpactSFX: {fileID: 8300000, guid: a9e03dd1fb4346c4a8e95b98ba0028c1, type: 3}
   KnifeWallPullSFX: {fileID: 8300000, guid: 2f84ce99fb1e1f446a32632d8a50410c, type: 3}
-  KnifeTip: {fileID: 6843200044708266910}
+  KnifeTip: {fileID: 6329715010280230110}
   KnifeMesh: {fileID: 5220786713276686701}
 --- !u!54 &524793123720820934
 Rigidbody:
