@@ -1,15 +1,15 @@
 ManifestFileVersion: 0
-CRC: 2781901743
+CRC: 1363174141
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 3ea36d770aed7e65d14bca624c618309
+    Hash: cdd17b4e5b3429c7a1b2f581477253b4
   TypeTreeHash:
     serializedVersion: 2
-    Hash: cf4818735eef997e25f9e5e3899468c5
+    Hash: c4f2c69fc609173f0f90ac2c02cb41b6
   IncrementalBuildHash:
     serializedVersion: 2
-    Hash: 3ea36d770aed7e65d14bca624c618309
+    Hash: cdd17b4e5b3429c7a1b2f581477253b4
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -79,13 +79,13 @@ ClassTypes:
 - Class: 114
   Script: {fileID: -223480140, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 114
+  Script: {fileID: -1335561034, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
+- Class: 114
   Script: {fileID: 1529503966, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 114
   Script: {fileID: 442677342, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 114
   Script: {fileID: 11500000, guid: d3cecf05b78b173605122a700874719c, type: 3}
-- Class: 114
-  Script: {fileID: -1335561034, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
 - Class: 115
   Script: {instanceID: 0}
 - Class: 137
@@ -129,8 +129,8 @@ Assets:
 - Assets/ModAssets/Doll/FleshDollItem.asset
 - Assets/ModAssets/Yuleman/Bestiary/SCP4666TK.asset
 - Assets/ModAssets/Doll/EvilFleshDoll.prefab
-- Assets/ModAssets/NetworkHandlerSCP4666.prefab
 - Assets/ModAssets/Knife/YulemanKnifeItem.asset
 - Assets/ModAssets/Sack/ChildSackItem.asset
+- Assets/ModAssets/NetworkHandlerSCP4666.prefab
 - Assets/ModAssets/Yuleman/Bestiary/SCP4666TN.asset
 Dependencies: []

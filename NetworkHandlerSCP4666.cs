@@ -62,7 +62,7 @@ namespace SCP4666
     [HarmonyPatch]
     public class NetworkObjectManager
     {
-        static GameObject networkPrefab;
+        static GameObject? networkPrefab;
         private static ManualLogSource logger = Plugin.LoggerInstance;
 
         [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Start))]
@@ -72,11 +72,11 @@ namespace SCP4666
                 return;
 
             if (ModAssets == null) { logger.LogError("Couldnt get ModAssets to create network handler"); return; }
-            networkPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab");
+            networkPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab"); // TODO: Set this up in unity editor
 
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
 
-            GameObject EvilDoll = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/Doll/EvilFleshDoll.prefab");
+            GameObject EvilDoll = ModAssets!.LoadAsset<GameObject>("Assets/ModAssets/Doll/EvilFleshDoll.prefab");
             NetworkManager.Singleton.AddNetworkPrefab(EvilDoll);
 
             if (Utils.isBeta)
@@ -88,12 +88,11 @@ namespace SCP4666
         [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]
         static void SpawnNetworkHandler()
         {
-            if (IsServerOrHost)
-            {
-                var networkHandlerHost = UnityEngine.Object.Instantiate(networkPrefab, Vector3.zero, Quaternion.identity);
-                networkHandlerHost.GetComponent<NetworkObject>().Spawn();
-                logger.LogDebug("Spawned NetworkHandlerSCP4666");
-            }
+            if (!IsServerOrHost) { return; }
+
+            var networkHandlerHost = UnityEngine.Object.Instantiate(networkPrefab, Vector3.zero, Quaternion.identity);
+            networkHandlerHost!.GetComponent<NetworkObject>().Spawn();
+            logger.LogDebug("Spawned NetworkHandlerSCP4666");
         }
     }
 }
