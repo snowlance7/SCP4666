@@ -8,7 +8,7 @@ namespace SCP4666.YulemanKnife
 {
     internal class ThrownKnifeScript : MonoBehaviour
     {
-        private static ManualLogSource logger = LoggerInstance;
+        private static ManualLogSource logger = Plugin.logger;
 
 #pragma warning disable CS8618
         public AudioSource KnifeAudio;
@@ -184,7 +184,7 @@ namespace SCP4666.YulemanKnife
             }
             else
             {
-                if (SCP4666AI.Instance != null && other == SCP4666AI.Instance.collider)
+                if (other.gameObject.TryGetComponent<SCP4666AI>(out SCP4666AI? scp) && scp != null)
                 {
                     EntitiesHitByKnife.Add(other);
                     return;

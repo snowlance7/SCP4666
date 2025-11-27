@@ -27,7 +27,7 @@ namespace SCP4666
 
         public IEnumerator ActivateCoroutine()
         {
-            LoggerInstance.LogDebug("In Activate()");
+            logger.LogDebug("In Activate()");
             yield return new WaitForSeconds(5f);
 
             if (playerHeldBy != null) { playerHeldBy.DropAllHeldItemsAndSync(); } // TODO: Log this
@@ -89,7 +89,7 @@ namespace SCP4666
             PlayerScript.thisController.enabled = true;
             if (PlayerScript.isPlayerDead)
             {
-                LoggerInstance.LogDebug("playerInital is dead, reviving them.");
+                logger.LogDebug("playerInital is dead, reviving them.");
                 PlayerScript.thisController.enabled = true;
                 PlayerScript.isPlayerDead = false;
                 PlayerScript.isPlayerControlled = true;

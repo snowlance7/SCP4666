@@ -1,4 +1,5 @@
 ﻿using BepInEx.Logging;
+using Dawn.Utils;
 using GameNetcodeStuff;
 using System;
 using System.Collections;
@@ -16,18 +17,20 @@ namespace SCP4666.Doll
 {
     internal class EvilFleshDollAI : NetworkBehaviour // TODO: Need to test and fix
     {
-        private static ManualLogSource logger = LoggerInstance;
         public static int DEBUG_bodyPartIndex = 0;
 
-        public static HashSet<EvilFleshDollAI> EvilFleshDolls = [];
+        public static HashSet<EvilFleshDollAI> Instances = [];
 
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+#pragma warning disable CS8618
+        public SmartAgentNavigator nav;
         public NavMeshAgent agent;
         public Animator animator;
         public GameObject bombMesh;
         public AudioSource audioSource;
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+#pragma warning restore CS8618
+
+        public SCP4666AI? yulemanThrownBy;
 
         public bool isBombDoll;
 
@@ -97,14 +100,14 @@ namespace SCP4666.Doll
 
         public override void OnDestroy()
         {
-            EvilFleshDolls.Remove(this);
+            Instances.Remove(this);
             base.OnDestroy();
         }
 
         public void Start()
         {
             StartOfRound.Instance.LocalPlayerDamagedEvent.AddListener(LocalPlayerDamaged);
-            EvilFleshDolls.Add(this);
+            Instances.Add(this);
 
             mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(true, false);
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(true, true);
@@ -190,8 +193,8 @@ namespace SCP4666.Doll
 
             if (targetPlayer == null)
             {
-                if (SCP4666AI.Instance == null) { return; }
-                if (!SetDestinationToPosition(SCP4666AI.Instance.transform.position, true))
+                if (yulemanThrownBy == null) { return; }
+                if (!SetDestinationToPosition(yulemanThrownBy.transform.position, true))
                 {
                     SetDestinationToEntrance();
                     return;

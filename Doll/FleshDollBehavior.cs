@@ -10,8 +10,7 @@ namespace SCP4666
 {
     public class FleshDollBehavior : PhysicsProp
     {
-        private static ManualLogSource logger = LoggerInstance;
-
+#pragma warning disable CS8618
         public NavMeshAgent agent;
         public Transform HoldItemPosition;
         public Collider collider;
@@ -20,8 +19,9 @@ namespace SCP4666
         public AnimationCurve grenadeFallCurve;
         public AnimationCurve grenadeVerticalFallCurveNoBounce;
         public AnimationCurve grenadeVerticalFallCurve;
+#pragma warning restore CS8618
 
-        static HashSet<FleshDollBehavior> Dolls = [];
+        public static HashSet<FleshDollBehavior> Instances = [];
 
         public Vector3 destination;
         NavMeshPath path1 = new NavMeshPath();
@@ -47,12 +47,12 @@ namespace SCP4666
         {
             base.Start();
 
-            Dolls.Add(this);
+            Instances.Add(this);
         }
 
         public override void OnDestroy()
         {
-            Dolls.Remove(this);
+            Instances.Remove(this);
             base.OnDestroy();
         }
 
@@ -268,7 +268,7 @@ namespace SCP4666
             }
             if (closestItem == null)
             {
-                foreach (GrabbableObject item in Dolls)
+                foreach (GrabbableObject item in Instances)
                 {
                     logger.LogDebug(item.name);
                     if (item == null || item == this) { continue; }

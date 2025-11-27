@@ -15,9 +15,14 @@ namespace SCP4666
 {
     public class NetworkHandlerSCP4666 : NetworkBehaviour
     {
-        private static ManualLogSource logger = Plugin.LoggerInstance;
+        private static ManualLogSource logger = Plugin.logger;
 
-        public static NetworkHandlerSCP4666? Instance { get; private set; }
+
+#pragma warning disable CS8618
+        public static NetworkHandlerSCP4666 Instance { get; private set; }
+
+        public GameObject BlackScreenOverlay;
+#pragma warning restore CS8618
 
         public override void OnNetworkSpawn()
         {
@@ -63,7 +68,7 @@ namespace SCP4666
     public class NetworkObjectManager
     {
         static GameObject? networkPrefab;
-        private static ManualLogSource logger = Plugin.LoggerInstance;
+        private static ManualLogSource logger = Plugin.logger;
 
         [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Start))]
         public static void Init()

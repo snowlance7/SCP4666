@@ -26,7 +26,7 @@ namespace SCP4666
     [HarmonyPatch]
     public class TESTING : MonoBehaviour
     {
-        private static ManualLogSource logger = LoggerInstance;
+        private static ManualLogSource logger = Plugin.logger;
         public static GameObject? EvilDollPrefab;
 
         [HarmonyPostfix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.PingScan_performed))]
@@ -34,7 +34,7 @@ namespace SCP4666
         {
             if (!Utils.isBeta) { return; }
             if (!Utils.testing) { return; }
-            SCP4666AI.Instance?.DEBUG_DoGroundSlam();
+            SCP4666AI.Instances[0]?.DEBUG_DoGroundSlam();
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SubmitChat_performed))]
@@ -44,7 +44,7 @@ namespace SCP4666
             if (!IsServerOrHost) { return; }
             string msg = __instance.chatTextField.text;
             string[] args = msg.Split(" ");
-            LoggerInstance.LogDebug(msg);
+            Plugin.logger.LogDebug(msg);
 
             switch (args[0])
             {
@@ -53,12 +53,12 @@ namespace SCP4666
                     HUDManager.Instance.DisplayTip("BodyPartIndex", args[1]);
                     break;
                 case "/doll":
-                    LoggerInstance.LogDebug("Spawning doll");
+                    Plugin.logger.LogDebug("Spawning doll");
                     GameObject obj = GameObject.Instantiate(EvilDollPrefab!, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
                     obj.GetComponent<NetworkObject>().Spawn(true);
                     break;
                 case "/bombDoll":
-                    LoggerInstance.LogDebug("Spawning bomb doll");
+                    Plugin.logger.LogDebug("Spawning bomb doll");
                     GameObject bombObj = GameObject.Instantiate(EvilDollPrefab!, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
                     bombObj.GetComponent<NetworkObject>().Spawn(true);
                     bombObj.GetComponent<EvilFleshDollAI>().SetBombDollClientRpc();

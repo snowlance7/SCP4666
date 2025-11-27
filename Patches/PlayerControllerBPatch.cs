@@ -18,13 +18,13 @@ namespace SCP4666.Patches
             try
             {
                 if (__instance != localPlayer) { return; }
-                PluginInstance.BlackScreenOverlay = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/BlackScreenOverlay.prefab");
-                PluginInstance.BlackScreenOverlay = GameObject.Instantiate(PluginInstance.BlackScreenOverlay);
-                PluginInstance.BlackScreenOverlay.SetActive(false);
+                NetworkHandlerSCP4666.Instance.BlackScreenOverlay = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/BlackScreenOverlay.prefab");
+                NetworkHandlerSCP4666.Instance.BlackScreenOverlay = GameObject.Instantiate(NetworkHandlerSCP4666.Instance.BlackScreenOverlay);
+                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(false);
             }
             catch (Exception e)
             {
-                LoggerInstance.LogError(e);
+                logger.LogError(e);
                 return;
             }
         }
@@ -39,18 +39,18 @@ namespace SCP4666.Patches
                 MakePlayerInvisible(__instance, false);
 
                 if (__instance != localPlayer) { return; }
-                PluginInstance.BlackScreenOverlay.SetActive(false);
+                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(false);
                 FreezePlayer(localPlayer, false);
                 if (ChildSackBehavior.localPlayerSizeChangedFromSack)
                 {
-                    LoggerInstance.LogDebug("Players size was changed by sack, changing back to default size");
+                    logger.LogDebug("Players size was changed by sack, changing back to default size");
                     ChildSackBehavior.localPlayerSizeChangedFromSack = false;
                     NetworkHandlerSCP4666.Instance?.ChangePlayerSizeServerRpc(localPlayer.actualClientId, 1f);
                 }
             }
             catch (Exception e)
             {
-                LoggerInstance.LogError(e);
+                logger.LogError(e);
                 return;
             }
         }

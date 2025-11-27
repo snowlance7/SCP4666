@@ -1,25 +1,18 @@
-﻿using BepInEx.Logging;
+﻿using Dawn.Utils;
 using GameNetcodeStuff;
 using SCP4666.Doll;
 using SCP4666.YulemanKnife;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
-using Unity.Netcode.Components;
 using UnityEngine;
-using UnityEngine.AI;
-using UnityEngine.Analytics;
 using static SCP4666.Plugin;
-using static UnityEngine.LightAnchor;
 
 namespace SCP4666
 {
     internal class SCP4666AI : EnemyAI // TODO: Rework and add new stuff
     {
-        private static ManualLogSource logger = LoggerInstance;
-
         // DEBUG STUFF
 
         bool DEBUG_SpawnDolls = true;
@@ -28,7 +21,8 @@ namespace SCP4666
         bool DEBUG_Teleport = true;
         bool DEBUG_TargetHost = true;
 
-        public static SCP4666AI? Instance { get; private set; }
+        //public static SCP4666AI? Instance { get; private set; }
+        public static List<SCP4666AI> Instances { get; private set; } = [];
 
 #pragma warning disable CS8618
         public Transform RightHandTransform;
@@ -58,6 +52,8 @@ namespace SCP4666
         public ParticleSystem GroundSlamParticles;
 
         public ThrownKnifeScript thrownKnifeScript;
+
+        public SmartAgentNavigator nav;
 #pragma warning restore CS8618
 
         Vector3 mainEntranceOutsidePosition;
@@ -159,25 +155,13 @@ namespace SCP4666
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
-            if (Instance != null && Instance != this)
-            {
-                logger.LogDebug("There is already a SCP-4666 in the scene. Removing this one.");
-                if (!IsServer) { return; }
-                NetworkObject.Despawn(true);
-                return;
-            }
-            Instance = this;
-            logger.LogDebug("Finished spawning SCP-4666");
+            Instances.Add(this);
         }
 
         public override void OnNetworkDespawn()
         {
+            Instances.Remove(this);
             base.OnNetworkDespawn();
-            if (Instance == this)
-            {
-                Instance = null;
-                PluginInstance.BlackScreenOverlay.SetActive(false);
-            }
         }
 
         public override void OnDestroy()
@@ -673,7 +657,7 @@ namespace SCP4666
 
             if (inSpecialAnimationWithPlayer != null && localPlayer == inSpecialAnimationWithPlayer)
             {
-                PluginInstance.BlackScreenOverlay.SetActive(false);
+                NetworkHandlerSCP4666.Instance?.BlackScreenOverlay.SetActive(false);
                 FreezePlayer(localPlayer, false);
                 PluginInstance.AllowPlayerDeathAfterDelay(5f);
             }
@@ -718,6 +702,7 @@ namespace SCP4666
             dollsToSpawn -= 1;
             EvilFleshDollAI doll = GameObject.Instantiate(EvilFleshDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>(); ;
             doll.NetworkObject.Spawn(true);
+            doll.yulemanThrownBy = this;
 
             if (useBombDolls)
             {
@@ -885,7 +870,7 @@ namespace SCP4666
 
             if (localPlayer == inSpecialAnimationWithPlayer)
             {
-                PluginInstance.BlackScreenOverlay.SetActive(true);
+                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(true);
                 StartOfRound.Instance.allowLocalPlayerDeath = false;
             }
 

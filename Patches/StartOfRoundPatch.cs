@@ -15,12 +15,12 @@ namespace SCP4666.Patches
         {
             try
             {
-                PluginInstance.BlackScreenOverlay.SetActive(false);
+                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(false);
                 FreezePlayer(localPlayer, false);
             }
             catch (Exception e)
             {
-                LoggerInstance.LogError(e);
+                logger.LogError(e);
                 return;
             }
         }
@@ -32,11 +32,11 @@ namespace SCP4666.Patches
             try
             {
                 if (leavingOnMidnight) { return true; }
-                LoggerInstance.LogDebug("Ship trying to leave automatically.");
+                logger.LogDebug("Ship trying to leave automatically.");
                 ChildSackBehavior sack = GameObject.FindObjectsOfType<ChildSackBehavior>().Where(x => x.isInShipRoom).FirstOrDefault();
                 if (sack == null) { return true; }
 
-                LoggerInstance.LogDebug("Sack found, attempting to stop ship leave and activating");
+                logger.LogDebug("Sack found, attempting to stop ship leave and activating");
                 StartOfRound.Instance.allPlayersDead = false;
 
                 if (!IsServerOrHost) { return false; } // TODO: Test this
@@ -47,7 +47,7 @@ namespace SCP4666.Patches
             }
             catch (Exception e)
             {
-                LoggerInstance.LogError(e);
+                logger.LogError(e);
                 return true;
             }
         }
