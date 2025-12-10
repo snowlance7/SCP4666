@@ -53,7 +53,7 @@ namespace SCP4666
         {
             PlayerControllerB player = PlayerFromId(clientId);
             player.thisPlayerBody.localScale = new Vector3(size, size, size);
-            RebuildRig(player);
+            Utils.RebuildRig(player);
         }
 
         [ServerRpc(RequireOwnership = false)]

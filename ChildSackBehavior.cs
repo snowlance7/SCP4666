@@ -184,7 +184,7 @@ namespace SCP4666
             deadBodyInfo.DeactivateBody(false);
 
             PlayerScript.thisPlayerBody.localScale = new Vector3(playerSize, playerSize, playerSize);
-            RebuildRig(PlayerScript);
+            Utils.RebuildRig(PlayerScript);
         }
     }
 }

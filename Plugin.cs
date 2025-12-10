@@ -22,8 +22,9 @@ namespace SCP4666
     public class Plugin : BaseUnityPlugin
     {
 #pragma warning disable CS8618
-        public static Plugin PluginInstance;
+        public static Plugin Instance;
         public static ManualLogSource logger;
+        public static AssetBundle ModAssets;
 #pragma warning restore CS8618
 
         private readonly Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
@@ -31,16 +32,14 @@ namespace SCP4666
         public static PlayerControllerB PlayerFromId(ulong id) { return StartOfRound.Instance.allPlayerScripts.Where(x => x.actualClientId == id).First(); }
         public static bool IsServerOrHost { get { return NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost; } }
 
-        public static AssetBundle? ModAssets;
-
         private void Awake()
         {
-            if (PluginInstance == null)
+            if (Instance == null)
             {
-                PluginInstance = this;
+                Instance = this;
             }
 
-            logger = PluginInstance.Logger;
+            logger = Instance.Logger;
 
             harmony.PatchAll();
 
@@ -49,47 +48,16 @@ namespace SCP4666
             // Loading Assets
             string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_assets.duskmod"));
+            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666Handler"));
             if (ModAssets == null)
             {
                 Logger.LogError($"Failed to load custom assets.");
                 return;
             }
-            logger.LogDebug($"Got AssetBundle at: {Path.Combine(sAssemblyLocation, "scp4666_assets.duskmod")}");
+            logger.LogDebug($"Got AssetBundle at: {Path.Combine(sAssemblyLocation, "scp4666Handler")}");
 
             // Finished
             Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");
-        }
-
-        public static void RebuildRig(PlayerControllerB pcb)
-        {
-            if (pcb != null && pcb.playerBodyAnimator != null)
-            {
-                pcb.playerBodyAnimator.WriteDefaultValues();
-                pcb.playerBodyAnimator.GetComponent<RigBuilder>()?.Build();
-            }
-        }
-
-        public static void FreezePlayer(PlayerControllerB player, bool value)
-        {
-            player.disableInteract = value;
-            player.disableLookInput = value;
-            player.disableMoveInput = value;
-        }
-
-        public static void MakePlayerInvisible(PlayerControllerB player, bool value)
-        {
-            GameObject scavengerModel = player.gameObject.transform.Find("ScavengerModel").gameObject;
-            if (scavengerModel == null) { logger.LogError("ScavengerModel not found"); return; }
-            scavengerModel.transform.Find("LOD1").gameObject.SetActive(!value);
-            scavengerModel.transform.Find("LOD2").gameObject.SetActive(!value);
-            scavengerModel.transform.Find("LOD3").gameObject.SetActive(!value);
-            player.playerBadgeMesh.gameObject.SetActive(value);
-        }
-
-        public static bool IsPlayerChild(PlayerControllerB player)
-        {
-            return player.thisPlayerBody.localScale.y < 1f;
         }
 
         public void AllowPlayerDeathAfterDelay(float delay)

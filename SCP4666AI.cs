@@ -8,6 +8,7 @@ using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using static SCP4666.Plugin;
+using static SCP4666.Utils;
 
 namespace SCP4666
 {
@@ -54,12 +55,18 @@ namespace SCP4666
         public ThrownKnifeScript thrownKnifeScript;
 
         public SmartAgentNavigator nav;
+
+        public GameObject DEBUG_hudOverlay;
 #pragma warning restore CS8618
+
+        public new bool isOutside => nav.IsAgentOutside();
 
         Vector3 mainEntranceOutsidePosition;
         Vector3 mainEntranceInsidePosition;
+        List<EntranceTeleport> entrances = [];
 
         List<PlayerControllerB> TargetPlayers = [];
+
         bool localPlayerHasSeenYuleman;
         bool spawnedAndVisible;
 
@@ -84,6 +91,7 @@ namespace SCP4666
 
         int dollsToSpawn;
         bool useBombDolls;
+        private float timeSinceSwitchBehavior;
 
         public bool isInsideFactory => !isOutside;
 
@@ -117,6 +125,10 @@ namespace SCP4666
 
         const int maxHp = 28;
 
+        const float spawnTurnCompassSpeed = 20f;
+        const float LOSOffset = 2f;
+        const float grabPlayerCooldown = 10f;
+
         public enum State
         {
             Spawning,
@@ -138,18 +150,24 @@ namespace SCP4666
 
             currentBehaviourStateIndex = (int)State.Spawning;
 
-            //SetEnemyOutside(true);
+            nav.SetAllValues(isOutside: true);
 
             mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition();
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(false, true);
+            entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
+
+            // spawn throwing knife
+            thrownKnifeScript = GameObject.Instantiate(ThrowingKnifePrefab, Vector3.zero, Quaternion.identity).GetComponent<ThrownKnifeScript>();
+            thrownKnifeScript.KnifeReturnedEvent.AddListener(KnifeReturned);
 
             if (!IsServer) { return; }
 
+            if (isBeta)
+                Instantiate(DEBUG_hudOverlay, Vector3.zero, Quaternion.identity);
+
+            // spawn presents
             int num = UnityEngine.Random.Range(minPresentsToSpawn, maxPresentsToSpawn);
             SpawnPresents(num);
-
-            thrownKnifeScript = GameObject.Instantiate(ThrowingKnifePrefab, Vector3.zero, Quaternion.identity).GetComponent<ThrownKnifeScript>();
-            thrownKnifeScript.KnifeReturnedEvent.AddListener(KnifeReturned);
         }
 
         public override void OnNetworkSpawn()
@@ -179,7 +197,7 @@ namespace SCP4666
                 Item giftItem = StartOfRound.Instance.allItemsList.itemsList.Where(x => x.name == "GiftBox").FirstOrDefault();
                 Vector3 pos = RoundManager.Instance.GetRandomPositionInRadius(transform.position, 1, 1.5f, random);
                 GiftBoxItem gift = GameObject.Instantiate(giftItem.spawnPrefab, pos, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform).GetComponentInChildren<GiftBoxItem>();
-                gift.NetworkObject.Spawn(true);
+                gift.NetworkObject.Spawn(destroyWithScene: true);
             }
         }
 
@@ -187,7 +205,7 @@ namespace SCP4666
         {
             if (inSpecialAnimation)
             {
-                agent.speed = 0f;
+                nav.StopAgent();
                 return;
             }
 
@@ -223,10 +241,10 @@ namespace SCP4666
             if (currentBehaviourStateIndex == (int)State.Spawning)
             {
                 turnCompass.LookAt(localPlayer.gameplayCamera.transform.position);
-                transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(new Vector3(0f, turnCompass.eulerAngles.y - 90, 0f)), 10f * Time.deltaTime); // TODO: Test this
+                transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(new Vector3(0f, turnCompass.eulerAngles.y - 90, 0f)), spawnTurnCompassSpeed * Time.deltaTime);
             }
 
-            if (localPlayer != inSpecialAnimationWithPlayer && localPlayer.HasLineOfSightToPosition(transform.position))
+            if (localPlayer != inSpecialAnimationWithPlayer && localPlayer.HasLineOfSightToPosition(transform.position + Vector3.up * LOSOffset))
             {
                 localPlayer.IncreaseFearLevelOverTime(0.1f, 0.5f);
 
@@ -252,10 +270,7 @@ namespace SCP4666
 
         public override void DoAIInterval()
         {
-            if (moveTowardsDestination)
-            {
-                agent.SetDestination(destination);
-            }
+            UpdateTestingHUD();
 
             switch (currentBehaviourStateIndex)
             {
@@ -284,18 +299,15 @@ namespace SCP4666
                     }
 
                     // Teleport on cooldown
-                    if (CanDoSpecialAction() && timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance
-                        && (Utils.isBeta && DEBUG_Teleport))
+                    if (CanDoSpecialAction() && timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance && GetTeleportNode()
+                        && (!Utils.isBeta || DEBUG_Teleport))
                     {
-                        logger.LogDebug("Teleporting");
-                        timeSinceTeleport = 0f;
-                        teleporting = true;
-                        TeleportToTargetPlayer();
+                        LongTeleport(targetNode.position, !targetPlayer.isInsideFactory);
                         return;
                     }
 
                     if (CanDoSpecialAction() && timeSinceDollSpawning > dollSpawningCooldown
-                        && (Utils.isBeta && DEBUG_SpawnDolls))
+                        && (!Utils.isBeta || DEBUG_SpawnDolls))
                     {
                         logger.LogDebug("Spawning dolls");
                         timeSinceDollSpawning = 0f;
@@ -316,7 +328,7 @@ namespace SCP4666
 
                     // Throw knife on cooldown
                     if (CanDoSpecialAction() && timeSinceKnifeThrown > knifeThrowCooldown
-                        && (Utils.isBeta && DEBUG_ThrowKnife))
+                        && (!Utils.isBeta || DEBUG_ThrowKnife))
                     {
                         //logger.LogDebug("Begin throwing knife");
                         float distance = Vector3.Distance(transform.position, targetPlayer.transform.position);
@@ -343,24 +355,21 @@ namespace SCP4666
                         return;
                     }
 
-                    if (isOutside) // outside
+                    targetNode = ChooseFarthestNodeFromPosition(mainEntranceOutsidePosition);
+                    if (Vector3.Distance(transform.position, targetNode.position) < 1f)
                     {
-                        targetNode = ChooseFarthestNodeFromPosition(mainEntranceOutsidePosition);
-                        if (Vector3.Distance(transform.position, targetNode.position) < 1f)
+                        if (isPlayerInSack && inSpecialAnimationWithPlayer != null)
                         {
-                            if (isPlayerInSack && inSpecialAnimationWithPlayer != null)
-                            {
-                                KillPlayerInSackClientRpc();
-                            }
-                            NetworkObject.Despawn(true);
-                            return;
+                            KillPlayerInSackClientRpc();
                         }
-
-                        SetDestinationToPosition(targetNode.position);
+                        NetworkObject.Despawn(true);
+                        return;
                     }
-                    else // inside
+                    
+                    if (isInsideFactory && !teleporting && !SetDestinationToPosition(targetNode.position))
                     {
-                        SetDestinationToEntrance();
+                        LongTeleport(mainEntranceOutsidePosition, true);
+                        return;
                     }
 
                     break;
@@ -371,13 +380,32 @@ namespace SCP4666
             }
         }
 
+        void UpdateTestingHUD()
+        {
+            if (isBeta && TestingHUDOverlay.Instance != null) // TestingHUD
+            {
+                TestingHUDOverlay.Instance.label1.text = ((State)currentBehaviourStateIndex).ToString();
+
+                TestingHUDOverlay.Instance.label2.text = "";
+
+                TestingHUDOverlay.Instance.label3.text = "TargetPlayer: " + targetPlayer.playerUsername;
+
+                TestingHUDOverlay.Instance.toggle1.isOn = isOutside;
+                TestingHUDOverlay.Instance.toggle1Label.text = "isOutside";
+
+                TestingHUDOverlay.Instance.toggle2.isOn = inSpecialAnimation;
+                TestingHUDOverlay.Instance.toggle2Label.text = "inSpecialAnimation";
+            }
+        }
+
         bool CanDoSpecialAction()
         {
             return
             !isThrowingKnife
             && !isCallingKnife
             && !inSpecialAnimation
-            && !teleporting;
+            && !teleporting
+            && !isGrabbingPlayer; // TODO: Test isGrabbingPlayer make sure it doesnt break anything
         }
 
         public void Teleport(Vector3 position, bool outside)
@@ -385,52 +413,62 @@ namespace SCP4666
             position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
             agent.Warp(position);
             transform.position = position;
-            SetEnemyOutsideClientRpc(outside);
+            nav.SetAllValues(outside);
             teleporting = false;
         }
 
-        public void TeleportToTargetPlayer()
+        public void LongTeleport(Vector3 position, bool outside)
         {
-            IEnumerator TeleportCoroutine()
+            logger.LogDebug("Teleporting...");
+            teleporting = true;
+            timeSinceTeleport = 0f;
+
+            IEnumerator TeleportCoroutine(Vector3 position, bool outside)
             {
                 PlayTeleportSFXClientRpc();
                 yield return new WaitForSeconds(2f);
 
-                Teleport(targetNode.position, !targetPlayer.isInsideFactory);
+                Teleport(position, outside);
                 PlayLaughSFXClientRpc();
                 teleporting = false;
             }
 
-            if (!GetTeleportNode())
-            {
-                teleporting = false;
-                return;
-            }
-
-            StartCoroutine(TeleportCoroutine());
+            StartCoroutine(TeleportCoroutine(position, outside));
         }
 
-        void SetDestinationToEntrance()
+        public bool SetDestinationToPosition(Vector3 position)
         {
-            if (agent == null || agent.enabled == false) { return; }
-            if (isInsideFactory)
-            {
-                SetDestinationToPosition(mainEntranceInsidePosition);
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
+            if (!SmartCanPathToPoint(position)) { return false; }
+            return nav.DoPathingToDestination(position);
+        }
 
-                if (Vector3.Distance(transform.position, mainEntranceInsidePosition) < 1f)
-                {
-                    Teleport(mainEntranceOutsidePosition, true);
-                }
-            }
-            else
-            {
-                SetDestinationToPosition(mainEntranceOutsidePosition);
+        public bool SmartCanPathToPoint(Vector3 position)
+        {
+            Vector3 scpPos = RoundManager.Instance.GetNavMeshPosition(transform.position, RoundManager.Instance.navHit);
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
 
-                if (Vector3.Distance(transform.position, mainEntranceOutsidePosition) < 1f)
-                {
-                    Teleport(mainEntranceInsidePosition, false);
-                }
+            if (nav.CanPathToPoint(scpPos, position) > 0)
+                return true;
+
+            foreach (var entrance in entrances)
+            {
+                bool relevantEntrance = isInsideFactory ? !entrance.isEntranceToBuilding : entrance.isEntranceToBuilding;
+                if (!relevantEntrance)
+                    continue;
+
+                Vector3 teleportFrom = RoundManager.Instance.GetNavMeshPosition(entrance.entrancePoint.position, RoundManager.Instance.navHit);
+
+                if (entrance.exitPoint == null && !entrance.FindExitPoint())
+                    continue;
+
+                Vector3 teleportTo = RoundManager.Instance.GetNavMeshPosition(entrance.exitPoint!.position, RoundManager.Instance.navHit);
+
+                if (nav.CanPathToPoint(scpPos, teleportFrom) > 0 && nav.CanPathToPoint(teleportTo, position) > 0)
+                    return true;
             }
+
+            return false;
         }
 
         bool GetTeleportNode()
@@ -463,7 +501,7 @@ namespace SCP4666
             foreach (var player in StartOfRound.Instance.allPlayerScripts)
             {
                 if (!PlayerIsTargetable(player)) { continue; }
-                if (player.HasLineOfSightToPosition(transform.position + Vector3.up * 2)) { return true; }
+                if (player.HasLineOfSightToPosition(transform.position + Vector3.up * LOSOffset)) { return true; }
             }
 
             return false;
@@ -471,13 +509,13 @@ namespace SCP4666
 
         public new bool TargetClosestPlayer(float bufferDistance = 1.5f, bool requireLineOfSight = false, float viewWidth = 70f)
         {
-            mostOptimalDistance = 2000f;
+            mostOptimalDistance = Mathf.Infinity;
             PlayerControllerB playerControllerB = targetPlayer;
             targetPlayer = null;
             foreach (PlayerControllerB player in TargetPlayers.ToList())
             {
                 if (Utils.isBeta && !DEBUG_TargetHost && player.isHostPlayerObject) { continue; }
-                if (PlayerIsTargetable(player)/* && !PathIsIntersectedByLineOfSight(player.transform.position, calculatePathDistance: false, avoidLineOfSight: false)*/)
+                if (PlayerIsTargetable(player))
                 {
                     tempDist = Vector3.Distance(base.transform.position, player.transform.position);
                     if (tempDist < mostOptimalDistance)
@@ -595,7 +633,7 @@ namespace SCP4666
             }
 
             if (timesHitWithoutDamagingPlayers >= maxHitsToGroundSlam && timeSinceGroundSlam > groundSlamCooldown
-                && (Utils.isBeta && DEBUG_GroundSlam))
+                && (!Utils.isBeta || DEBUG_GroundSlam))
             {
                 logger.LogDebug("Performing ground slam");
                 timesHitWithoutDamagingPlayers = 0;
@@ -605,7 +643,7 @@ namespace SCP4666
             }
         }
 
-        public override void OnCollideWithPlayer(Collider other) // This only runs on client collided with
+        public override void OnCollideWithPlayer(Collider other)
         {
             base.OnCollideWithPlayer(other);
             if (isEnemyDead) { return; }
@@ -617,9 +655,9 @@ namespace SCP4666
 
             timeSinceDamagePlayer = 0f;
 
-            if (IsPlayerChild(player) && timeSinceGrabPlayer > 10f && !isPlayerInSack && !isGrabbingPlayer)
+            if (IsPlayerChild(player) && timeSinceGrabPlayer > grabPlayerCooldown && !isPlayerInSack)
             {
-                if (!isThrowingKnife && !isCallingKnife && !teleporting)
+                if (CanDoSpecialAction())
                 {
                     timeSinceGrabPlayer = 0f;
                     inSpecialAnimation = true;
@@ -639,7 +677,7 @@ namespace SCP4666
                 bool sackSlap = UnityEngine.Random.Range(0, 2) == 0;
                 DoAnimationServerRpc(sackSlap ? "sackSlap" : "slap");
             }
-            logger.LogDebug("Finished OnCollideWithPlayer()");
+            logger.LogDebug("OnCollideWithPlayer()");
         }
 
 
@@ -655,15 +693,14 @@ namespace SCP4666
                 creatureAnimator.SetBool("bagWalk", false);
             }
 
-            if (inSpecialAnimationWithPlayer != null && localPlayer == inSpecialAnimationWithPlayer)
-            {
-                NetworkHandlerSCP4666.Instance?.BlackScreenOverlay.SetActive(false);
-                FreezePlayer(localPlayer, false);
-                PluginInstance.AllowPlayerDeathAfterDelay(5f);
-            }
-
             if (inSpecialAnimationWithPlayer != null)
             {
+                if (localPlayer == inSpecialAnimationWithPlayer)
+                {
+                    NetworkHandlerSCP4666.Instance?.BlackScreenOverlay.SetActive(false);
+                    FreezePlayer(localPlayer, false);
+                    Instance.AllowPlayerDeathAfterDelay(5f);
+                }
                 inSpecialAnimationWithPlayer.transform.SetParent(null);
             }
 
@@ -678,7 +715,7 @@ namespace SCP4666
             timeSinceGroundSlam = 0f;
 
             base.CancelSpecialAnimationWithPlayer();
-            logger.LogDebug("Finished CancelSpecialAnimationWithPlayer()");
+            logger.LogDebug("CancelSpecialAnimationWithPlayer()");
         }
 
         #endregion
@@ -692,16 +729,16 @@ namespace SCP4666
 
             if (dollsToSpawn <= 0)
             {
-                DoAnimationClientRpc("reset");
                 inSpecialAnimation = false;
+                DoAnimationClientRpc("reset");
                 MakeKnifeVisible();
                 return;
             }
 
             logger.LogDebug("DollsToSpawn: " +  dollsToSpawn);
             dollsToSpawn -= 1;
-            EvilFleshDollAI doll = GameObject.Instantiate(EvilFleshDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>(); ;
-            doll.NetworkObject.Spawn(true);
+            EvilFleshDollAI doll = GameObject.Instantiate(EvilFleshDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>();
+            doll.NetworkObject.Spawn(destroyWithScene: true);
             doll.yulemanThrownBy = this;
 
             if (useBombDolls)
@@ -792,11 +829,6 @@ namespace SCP4666
             }
         }
 
-        public void SetInSpecialAnimation() // Animation
-        {
-            inSpecialAnimation = true;
-        }
-
         public void UnsetInSpecialAnimation() // Animation
         {
             inSpecialAnimation = false;
@@ -881,20 +913,43 @@ namespace SCP4666
             logger.LogDebug(inSpecialAnimationWithPlayer.playerUsername + " put in yulemans sack");
         }
 
-        public void FinishStartAnimation() // Animation
-        {
-            logger.LogDebug("In FinishStartAnimation()");
-            if (IsServer)
-            {
-                SwitchToBehaviourClientRpc((int)State.Chasing);
-            }
-
-            inSpecialAnimation = false;
-        }
-
         #endregion
 
+        public new void SetEnemyOutside(bool outside) // Call in SmartNavAgent in unity editor
+        {
+            transform.localScale = outside ? outsideScale : insideScale;
+        }
+
+        public new void SwitchToBehaviourStateOnLocalClient(int stateIndex)
+        {
+            if (currentBehaviourStateIndex == stateIndex) { return; }
+
+            logger.LogDebug("Switching behavior to " + (State)stateIndex);
+            previousBehaviourStateIndex = currentBehaviourStateIndex;
+            currentBehaviourStateIndex = stateIndex;
+            currentBehaviourState = enemyBehaviourStates[stateIndex];
+            PlayAudioOfCurrentState();
+            PlayAnimationOfCurrentState();
+
+            timeSinceSwitchBehavior = 0f;
+
+            BehaviourSwitchCleanUp();
+        }
+
+        public void BehaviourSwitchCleanUp()
+        {
+
+        }
+
         // RPC's
+
+
+        [ClientRpc]
+        public new void SwitchToBehaviourClientRpc(int stateIndex)
+        {
+            if (stateIndex == currentBehaviourStateIndex) { return; }
+            SwitchToBehaviourStateOnLocalClient(stateIndex);
+        }
 
         [ClientRpc]
         public void BecomeVisibleClientRpc()
@@ -913,7 +968,7 @@ namespace SCP4666
         [ClientRpc]
         public void KillPlayerInSackClientRpc()
         {
-            logger.LogDebug("In KillPlayerInSackClientRpc()");
+            logger.LogDebug("KillPlayerInSackClientRpc()");
             if (inSpecialAnimationWithPlayer == null) { logger.LogError("inSpecialAnimationWithPlayer is null in KillPlayerInSackClientRpc()"); return; }
             PlayerControllerB player = inSpecialAnimationWithPlayer;
             CancelSpecialAnimationWithPlayer();
@@ -925,13 +980,13 @@ namespace SCP4666
         public void DoAnimationServerRpc(string animationName)
         {
             if (!IsServer) { return; }
-            logger.LogDebug("Doing " + animationName + " animation");
             DoAnimationClientRpc(animationName);
         }
 
         [ClientRpc]
         public void DoAnimationClientRpc(string animationName)
         {
+            logger.LogDebug("DoAnimation: " + animationName);
             creatureAnimator.SetTrigger(animationName);
         }
 
@@ -976,28 +1031,22 @@ namespace SCP4666
 
             if (currentBehaviourStateIndex == (int)State.Spawning)
             {
+                SwitchToBehaviourClientRpc((int)State.Chasing);
                 DoAnimationClientRpc("start");
             }
 
             if (TargetPlayers.Contains(player)) { return; }
             TargetPlayers.Add(player);
 
-            if (currentBehaviourStateIndex == (int)State.Abducting) // TODO: Test this
+            /*if (currentBehaviourStateIndex == (int)State.Abducting) // TODO: Test this
             {
                 SwitchToBehaviourClientRpc((int)State.Chasing);
-            }
+            }*/
 
             logger.LogDebug($"Added {player.playerUsername} to targeted players");
         }
 
-        [ClientRpc]
-        public void SetEnemyOutsideClientRpc(bool value)
-        {
-            SetEnemyOutside(value);
-            transform.localScale = value ? outsideScale : insideScale;
-        }
-
-        [ClientRpc]
+        /*[ClientRpc]
         public void SetKnifeValueClientRpc(NetworkObjectReference netRef, int value)
         {
             if (!netRef.TryGet(out NetworkObject netobj)) { return; }
@@ -1013,6 +1062,6 @@ namespace SCP4666
             if (!netobj.TryGetComponent(out ChildSackBehavior sack)) { return; }
             sack.SetScrapValue(value);
             sack.FallToGround();
-        }
+        }*/
     }
 }

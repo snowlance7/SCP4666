@@ -36,16 +36,16 @@ namespace SCP4666.Patches
             try
             {
                 __instance.voiceMuffledByEnemy = false;
-                MakePlayerInvisible(__instance, false);
+                Utils.MakePlayerInvisible(__instance, false);
 
                 if (__instance != localPlayer) { return; }
                 NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(false);
-                FreezePlayer(localPlayer, false);
+                Utils.FreezePlayer(__instance, false);
                 if (ChildSackBehavior.localPlayerSizeChangedFromSack)
                 {
                     logger.LogDebug("Players size was changed by sack, changing back to default size");
                     ChildSackBehavior.localPlayerSizeChangedFromSack = false;
-                    NetworkHandlerSCP4666.Instance?.ChangePlayerSizeServerRpc(localPlayer.actualClientId, 1f);
+                    NetworkHandlerSCP4666.Instance?.ChangePlayerSizeServerRpc(__instance.actualClientId, 1f);
                 }
             }
             catch (Exception e)

@@ -1,5 +1,6 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
+using PathfindingLib.API.SmartPathfinding;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -253,6 +254,7 @@ namespace SCP4666
             scavengerModel.transform.Find("LOD3").gameObject.SetActive(!value);
             scavengerModel.transform.Find("metarig/spine/spine.001/spine.002/spine.003/LevelSticker").gameObject.SetActive(!value);
             scavengerModel.transform.Find("metarig/spine/spine.001/spine.002/spine.003/BetaBadge").gameObject.SetActive(!value);
+            player.playerBadgeMesh.gameObject.SetActive(!value);
 
         }
 
@@ -548,6 +550,24 @@ namespace SCP4666
             return farthestPlayer;
         }
 
+        public static float CanPathToPoint(Vector3 startPos, Vector3 endPos)
+        {
+            NavMeshPath path = new NavMeshPath();
+            if (!NavMesh.CalculatePath(startPos, endPos, -1, path) || (int)path.status != 0)
+            {
+                return -1f;
+            }
+            float pathDistance = 0f;
+            if (path.corners.Length > 1)
+            {
+                for (int i = 1; i < path.corners.Length; i++)
+                {
+                    pathDistance += Vector3.Distance(path.corners[i - 1], path.corners[i]);
+                }
+            }
+            return pathDistance;
+        }
+
         public static void PlaySoundAtPosition(Vector3 pos, AudioClip clip, float volume = 1f, bool randomizePitch = true, bool spatial3D = true, float min3DDistance = 1f, float max3DDistance = 10f)
         {
             GameObject soundObj = GameObject.Instantiate(new GameObject("TempSoundEffectObj"), pos, Quaternion.identity);
@@ -574,6 +594,14 @@ namespace SCP4666
         {
             int index = UnityEngine.Random.Range(0, clips.Length);
             PlaySoundAtPosition(pos, clips[index], volume, randomizePitch, spatial3D, min3DDistance, max3DDistance);
+        }
+
+        public static PlayerControllerB? GetRandomPlayer()
+        {
+            PlayerControllerB[] players = StartOfRound.Instance.allPlayerScripts.Where(x => x != null && x.isPlayerControlled).ToArray();
+            if (players.Length <= 0) { return null; }
+            int index = UnityEngine.Random.Range(0, players.Length);
+            return players[index];
         }
     }
 
