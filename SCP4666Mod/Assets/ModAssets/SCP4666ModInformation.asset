@@ -12,12 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: -303672662, guid: 41d6645f64e86c743812eb594070972f, type: 3}
   m_Name: SCP4666ModInformation
   m_EditorClassIdentifier: 
-  <AuthorName>k__BackingField: 
-  <ModName>k__BackingField: 
-  <Version>k__BackingField: 
-  <READMEFile>k__BackingField: {fileID: 0}
-  <ChangelogFile>k__BackingField: {fileID: 0}
-  <ModDescription>k__BackingField: 
+  <AuthorName>k__BackingField: ProjectSCP
+  <ModName>k__BackingField: SCP4666
+  <Version>k__BackingField: 1.1.0
+  <READMEFile>k__BackingField: {fileID: 4900000, guid: a14c2230f6ae0c846a9279bf30515fac,
+    type: 3}
+  <ChangelogFile>k__BackingField: {fileID: 4900000, guid: dba7e330ce65301498eb91e2d7fef68d,
+    type: 3}
+  <ModDescription>k__BackingField: Adds the Yuleman to the game
   <ExtraDependencies>k__BackingField: []
-  <WebsiteUrl>k__BackingField: 
-  <ModIcon>k__BackingField: {fileID: 0}
+  <WebsiteUrl>k__BackingField: https://github.com/snowlance7/SCP4666
+  <ModIcon>k__BackingField: {fileID: 21300000, guid: fc0e31368d59dfa48849b43002d18df0,
+    type: 3}

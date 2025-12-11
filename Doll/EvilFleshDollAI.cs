@@ -24,7 +24,6 @@ namespace SCP4666.Doll
 
 #pragma warning disable CS8618
         public SmartAgentNavigator nav;
-        public NavMeshAgent agent;
         public Animator animator;
         public GameObject bombMesh;
         public AudioSource audioSource;
@@ -38,7 +37,6 @@ namespace SCP4666.Doll
 
         const float AIIntervalTime = 0.2f;
         float timeSinceIntervalUpdate;
-        private NavMeshPath path1 = new NavMeshPath();
         private Vector3 destination;
 
         public bool isInsideFactory;
@@ -112,8 +110,11 @@ namespace SCP4666.Doll
             mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(true, false);
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(true, true);
 
-            falling = false;
-            landing = false;
+            nav.DisableMovement(true);
+            nav.SetAllValues(isOutside: yulemanThrownBy.isOutside);
+
+            //falling = false;
+            //landing = false;
             animator.SetTrigger("fall");
             Lunge(2f, 0f, 0.5f);
         }

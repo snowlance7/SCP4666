@@ -1,4 +1,5 @@
 ﻿using BepInEx.Logging;
+using Dawn.Utils;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
@@ -11,7 +12,7 @@ namespace SCP4666
     public class FleshDollBehavior : PhysicsProp
     {
 #pragma warning disable CS8618
-        public NavMeshAgent agent;
+        public SmartAgentNavigator nav;
         public Transform HoldItemPosition;
         public Collider collider;
         public Animator itemAnimator;

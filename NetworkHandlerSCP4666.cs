@@ -22,6 +22,7 @@ namespace SCP4666
         public static NetworkHandlerSCP4666 Instance { get; private set; }
 
         public GameObject BlackScreenOverlay;
+        public GameObject EvilDollPrefab;
 #pragma warning restore CS8618
 
         public override void OnNetworkSpawn()
@@ -80,14 +81,6 @@ namespace SCP4666
             networkPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab"); // TODO: Set this up in unity editor
 
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
-
-            GameObject EvilDoll = ModAssets!.LoadAsset<GameObject>("Assets/ModAssets/Doll/EvilFleshDoll.prefab");
-            NetworkManager.Singleton.AddNetworkPrefab(EvilDoll);
-
-            if (Utils.isBeta)
-            {
-                TESTING.EvilDollPrefab = EvilDoll;
-            }
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]

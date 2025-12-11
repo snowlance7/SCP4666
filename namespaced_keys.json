@@ -1,0 +1,12 @@
+{
+  "ScpfoursixsixsixEnemyKeys": {
+    "__type": "DawnEnemyInfo",
+    "SCPFourSixSixSix": "scpfoursixsixsix:scpfoursixsixsix"
+  },
+  "ScpfoursixsixsixItemKeys": {
+    "__type": "DawnItemInfo",
+    "ChildSack": "scpfoursixsixsix:child_sack",
+    "FleshDoll": "scpfoursixsixsix:fleshdoll",
+    "YulemanKnife": "scpfoursixsixsix:yuleman_knife"
+  }
+}

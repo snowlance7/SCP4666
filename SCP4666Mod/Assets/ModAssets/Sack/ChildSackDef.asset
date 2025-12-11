@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 466683445, guid: 41d6645f64e86c743812eb594070972f, type: 3}
-  m_Name: FleshDollDef
+  m_Name: ChildSackDef
   m_EditorClassIdentifier: 
   _configEntries: []
   _tags: []
   <Key>k__BackingField:
     _namespace: scpfoursixsixsix
-    _key: fleshdoll
-  <Item>k__BackingField: {fileID: 11400000, guid: c4df6036947b35844b1f1d1894fa78d9,
+    _key: child_sack
+  <Item>k__BackingField: {fileID: 11400000, guid: 660a05c93f457284fbb39bbb821b7260,
     type: 2}
   <ShopItemPreset>k__BackingField:
     <OrderRequestNode>k__BackingField: {fileID: 0}

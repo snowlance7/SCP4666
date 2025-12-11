@@ -78,6 +78,7 @@ GameObject:
   - component: {fileID: 5205935945829572971}
   - component: {fileID: 2031737904557487894}
   - component: {fileID: 4732791040888603977}
+  - component: {fileID: 5474674523921646897}
   m_Layer: 19
   m_Name: EvilFleshDoll
   m_TagString: Enemy
@@ -250,7 +251,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 951099334
+  GlobalObjectIdHash: 2357434946
+  InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
@@ -292,6 +294,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e96cb6065543e43c4a752faaa1468eb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  UseUnreliableDeltas: 0
   SyncPositionX: 1
   SyncPositionY: 1
   SyncPositionZ: 1
@@ -322,12 +325,36 @@ MonoBehaviour:
   m_Script: {fileID: -1245269143, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  nav: {fileID: 5474674523921646897}
   agent: {fileID: 5205935945829572971}
   animator: {fileID: 6175921811230102004}
   bombMesh: {fileID: 5939435383404291414}
   audioSource: {fileID: 3273542445226647752}
+  yulemanThrownBy: {fileID: 0}
   isBombDoll: 0
   isInsideFactory: 0
+--- !u!114 &5474674523921646897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 116494380623710686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1066262130, guid: 01059dcd443ed0a4bbf7bf2113af7b01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  OnUseEntranceTeleport:
+    m_PersistentCalls:
+      m_Calls: []
+  OnEnableOrDisableAgent:
+    m_PersistentCalls:
+      m_Calls: []
+  lastUsedEntranceTeleport: {fileID: 0}
+  agent: {fileID: 0}
+  _nodeRemovalPrecision: 5
+  _allowedLinks: 15
 --- !u!1 &152879420184675697
 GameObject:
   m_ObjectHideFlags: 0

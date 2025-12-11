@@ -1,4 +1,6 @@
-﻿using Dawn.Utils;
+﻿using Dawn;
+using Dawn.Utils;
+using Dusk;
 using GameNetcodeStuff;
 using SCP4666.Doll;
 using SCP4666.YulemanKnife;
@@ -29,6 +31,8 @@ namespace SCP4666
         public Transform RightHandTransform;
         public Transform ChildSackTransform;
 
+        public AudioSource MusicSource;
+
         public AudioClip FootstepSFX;
         public AudioClip TeleportSFX;
         public AudioClip LaughSFX;
@@ -40,11 +44,6 @@ namespace SCP4666
         public Transform turnCompass;
 
         public GameObject ThrowingKnifePrefab;
-
-        public GameObject ChildSackPrefab;
-        public GameObject YulemanKnifePrefab;
-        public GameObject EvilFleshDollPrefab;
-        public GameObject FleshDollPrefab;
 
         public Collider collider;
 
@@ -562,14 +561,16 @@ namespace SCP4666
             if (IsServer)
             {
                 // Spawn YulemanKnife
-                YulemanKnifeBehavior newKnife = GameObject.Instantiate(YulemanKnifePrefab, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<YulemanKnifeBehavior>();
+                YulemanKnifeBehavior newKnife = GameObject.Instantiate(LethalContent.Items[SCP4666Keys.YulemanKnife].Item.spawnPrefab, transform.position, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform).GetComponentInChildren<YulemanKnifeBehavior>();
+                newKnife.fallTime = 0f;
                 newKnife.NetworkObject.Spawn();
 
                 //int knifeValue = UnityEngine.Random.Range(configKnifeMinValue.Value, configKnifeMaxValue.Value + 1);
                 //SetKnifeValueClientRpc(newKnife.NetworkObject, knifeValue);
 
                 // Spawn ChildSack
-                ChildSackBehavior sack = GameObject.Instantiate(ChildSackPrefab, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<ChildSackBehavior>();
+                ChildSackBehavior sack = GameObject.Instantiate(LethalContent.Items[SCP4666Keys.ChildSack].Item.spawnPrefab, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponentInChildren<ChildSackBehavior>();
+                sack.fallTime = 0f;
                 sack.NetworkObject.Spawn();
 
                 //int sackValue = UnityEngine.Random.Range(configSackMinValue.Value, configSackMaxValue.Value + 1);
@@ -579,7 +580,8 @@ namespace SCP4666
                 int dollsToDrop = UnityEngine.Random.Range(minDollsToDrop, maxDollsToDrop + 1);
                 for (int i = 0; i < dollsToDrop; i++)
                 {
-                    FleshDollBehavior doll = GameObject.Instantiate(FleshDollPrefab, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponent<FleshDollBehavior>();
+                    FleshDollBehavior doll = GameObject.Instantiate(LethalContent.Items[SCP4666Keys.FleshDoll].Item.spawnPrefab, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer).GetComponent<FleshDollBehavior>();
+                    doll.fallTime = 0f;
                     doll.NetworkObject.Spawn();
                 }
             }
@@ -737,9 +739,9 @@ namespace SCP4666
 
             logger.LogDebug("DollsToSpawn: " +  dollsToSpawn);
             dollsToSpawn -= 1;
-            EvilFleshDollAI doll = GameObject.Instantiate(EvilFleshDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>();
-            doll.NetworkObject.Spawn(destroyWithScene: true);
+            EvilFleshDollAI doll = GameObject.Instantiate(NetworkHandlerSCP4666.Instance.EvilDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>();
             doll.yulemanThrownBy = this;
+            doll.NetworkObject.Spawn(destroyWithScene: true);
 
             if (useBombDolls)
             {
