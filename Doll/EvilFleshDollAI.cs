@@ -42,6 +42,7 @@ namespace SCP4666.Doll
         public bool isInsideFactory;
         Vector3 mainEntranceInsidePosition;
         Vector3 mainEntranceOutsidePosition;
+        List<EntranceTeleport> entrances = [];
 
         Vector3 targetFloorPosition;
 
@@ -95,6 +96,7 @@ namespace SCP4666.Doll
         public const float distanceToJumpAtPlayer = 4f;
         const float jumpHeight = 2f;
         const float jumpDuration = 0.5f;
+        const bool dollsTargetClosestPlayer = false;
 
         public override void OnDestroy()
         {
@@ -109,6 +111,7 @@ namespace SCP4666.Doll
 
             mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(true, false);
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(true, true);
+            entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
 
             nav.DisableMovement(true);
             nav.SetAllValues(isOutside: yulemanThrownBy.isOutside);
@@ -171,15 +174,13 @@ namespace SCP4666.Doll
         private void OnHitGround()
         {
             logger.LogDebug("OnHitGround");
-            jumping = false;
-            falling = false;
-            landing = false;
-            inSpecialAnimation = false;
+            ResetVariables();
 
-            agent.enabled = true;
-            agent.Warp(transform.position);
-            agent.ResetPath();
-            agent.isStopped = false;
+            nav.agent.enabled = true;
+            Vector3 pos = RoundManager.Instance.GetNavMeshPosition(transform.position);
+            nav.agent.Warp(pos);
+            nav.StopAgent();
+            nav.DisableMovement(false);
         }
 
         public void DoAIInterval()
@@ -190,54 +191,24 @@ namespace SCP4666.Doll
                 return;
             }*/
 
-            targetPlayer = GetClosestPlayer();
+            targetPlayer = dollsTargetClosestPlayer ? GetClosestPlayer() : yulemanThrownBy?.targetPlayer;
 
-            if (targetPlayer == null)
+            if (targetPlayer == null || !SetDestinationToPosition(targetPlayer.transform.position))
             {
                 if (yulemanThrownBy == null) { return; }
-                if (!SetDestinationToPosition(yulemanThrownBy.transform.position, true))
+                if (!SetDestinationToPosition(yulemanThrownBy.transform.position))
                 {
-                    SetDestinationToEntrance();
                     return;
                 }
             }
             else
             {
-                if (!SetDestinationToPosition(targetPlayer.transform.position, true))
-                {
-                    SetDestinationToEntrance();
-                    return;
-                }
-
                 if (Vector3.Distance(transform.position, targetPlayer.transform.position) <= distanceToJumpAtPlayer)
                 {
                     logger.LogDebug("Attempt jump at player");
-                    agent.isStopped = true;
+                    nav.DisableMovement(true);
                     inSpecialAnimation = true;
                     LungeClientRpc(targetPlayer.actualClientId);
-                }
-            }
-        }
-
-        void SetDestinationToEntrance()
-        {
-            if (agent == null || agent.enabled == false) { return; }
-            if (isInsideFactory)
-            {
-                SetDestinationToPosition(mainEntranceInsidePosition);
-
-                if (Vector3.Distance(transform.position, mainEntranceInsidePosition) < 1f)
-                {
-                    Teleport(mainEntranceOutsidePosition, false);
-                }
-            }
-            else
-            {
-                SetDestinationToPosition(mainEntranceOutsidePosition);
-
-                if (Vector3.Distance(transform.position, mainEntranceOutsidePosition) < 1f)
-                {
-                    Teleport(mainEntranceInsidePosition, true);
                 }
             }
         }
@@ -245,32 +216,44 @@ namespace SCP4666.Doll
         public void Teleport(Vector3 position, bool _isInsideFactory)
         {
             position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-            if (IsServer) { agent.Warp(position); }
+            if (IsServer) { nav.agent.Warp(position); }
             transform.position = position;
             isInsideFactory = _isInsideFactory;
         }
 
-        public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
+        public bool SetDestinationToPosition(Vector3 position)
         {
-            if (agent == null || agent.enabled == false) { return false; }
-            if (checkForPath)
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
+            if (!SmartCanPathToPoint(position)) { return false; }
+            return nav.DoPathingToDestination(position);
+        }
+
+        public bool SmartCanPathToPoint(Vector3 position)
+        {
+            Vector3 scpPos = RoundManager.Instance.GetNavMeshPosition(transform.position, RoundManager.Instance.navHit);
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
+
+            if (nav.CanPathToPoint(scpPos, position) > 0)
+                return true;
+
+            foreach (var entrance in entrances)
             {
-                position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 1.75f);
-                path1 = new NavMeshPath();
-                if (!agent.CalculatePath(position, path1))
-                {
-                    return false;
-                }
-                if (Vector3.Distance(path1.corners[path1.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 2.7f)) > 1.55f)
-                {
-                    return false;
-                }
+                bool relevantEntrance = isInsideFactory ? !entrance.isEntranceToBuilding : entrance.isEntranceToBuilding;
+                if (!relevantEntrance)
+                    continue;
+
+                Vector3 teleportFrom = RoundManager.Instance.GetNavMeshPosition(entrance.entrancePoint.position, RoundManager.Instance.navHit);
+
+                if (entrance.exitPoint == null && !entrance.FindExitPoint())
+                    continue;
+
+                Vector3 teleportTo = RoundManager.Instance.GetNavMeshPosition(entrance.exitPoint!.position, RoundManager.Instance.navHit);
+
+                if (nav.CanPathToPoint(scpPos, teleportFrom) > 0 && nav.CanPathToPoint(teleportTo, position) > 0)
+                    return true;
             }
 
-            //moveTowardsDestination = true;
-            destination = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, -1f);
-            agent.SetDestination(destination);
-            return true;
+            return false;
         }
 
         public Vector3 GetItemFloorPosition(Vector3 startPosition)
@@ -312,59 +295,60 @@ namespace SCP4666.Doll
         {
             if (jumping) { return; }
             jumping = true;
-            StartCoroutine(LungeRoutine(distance, jumpHeight, duration));
-        }
 
-        IEnumerator LungeRoutine(float distance, float jumpHeight, float duration)
-        {
-            targetFloorPosition = transform.position + transform.forward * distance;
-            targetFloorPosition = GetItemFloorPosition(targetFloorPosition);
-
-            Vector3 start = transform.position;
-
-            float elapsed = 0f;
-            while (elapsed < duration)
+            IEnumerator LungeRoutine(float distance, float jumpHeight, float duration)
             {
-                if (!jumping)
+                targetFloorPosition = transform.position + transform.forward * distance;
+                targetFloorPosition = GetItemFloorPosition(targetFloorPosition);
+
+                Vector3 start = transform.position;
+
+                float elapsed = 0f;
+                while (elapsed < duration)
                 {
-                    yield break;
+                    if (!jumping)
+                    {
+                        yield break;
+                    }
+
+                    elapsed += Time.deltaTime;
+                    float t = elapsed / duration;
+
+                    // Ease-out curve (starts fast, slows at targetFloorPosition)
+                    //t = 1f - Mathf.Pow(1f - t, 3f);
+
+                    // Horizontal motion
+                    Vector3 horizontalPos = Vector3.Lerp(start, targetFloorPosition, t);
+
+                    // Vertical arc (parabola) — will be 0 if jumpHeight is 0
+                    float height = 4 * jumpHeight * t * (1 - t);
+
+                    logger.LogDebug("duration: " + t);
+
+                    if (t > 0.5f && !falling)
+                    {
+                        falling = true;
+                        animator.SetTrigger("fall");
+                        logger.LogDebug("finished fall animation");
+                    }
+                    if (t > 0.75f && !landing)
+                    {
+                        landing = true;
+                        animator.SetTrigger("land");
+                        logger.LogDebug("finished land animation");
+                    }
+
+                    // Apply combined motion
+                    transform.position = horizontalPos + Vector3.up * height;
+
+                    yield return null;
                 }
 
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
-
-                // Ease-out curve (starts fast, slows at targetFloorPosition)
-                //t = 1f - Mathf.Pow(1f - t, 3f);
-
-                // Horizontal motion
-                Vector3 horizontalPos = Vector3.Lerp(start, targetFloorPosition, t);
-
-                // Vertical arc (parabola) — will be 0 if jumpHeight is 0
-                float height = 4 * jumpHeight * t * (1 - t);
-
-                logger.LogDebug("duration: " + t);
-
-                if (t > 0.5f && !falling)
-                {
-                    falling = true;
-                    animator.SetTrigger("fall");
-                    logger.LogDebug("finished fall animation");
-                }
-                if (t > 0.75f && !landing)
-                {
-                    landing = true;
-                    animator.SetTrigger("land");
-                    logger.LogDebug("finished land animation");
-                }
-
-                // Apply combined motion
-                transform.position = horizontalPos + Vector3.up * height;
-
-                yield return null;
+                jumping = false;
+                OnHitGround();
             }
 
-            jumping = false;
-            OnHitGround();
+            StartCoroutine(LungeRoutine(distance, jumpHeight, duration));
         }
 
         /* bodyparts
@@ -386,11 +370,8 @@ namespace SCP4666.Doll
             if (!IsServer) { return; }
             if (parentObject != null || isEnemyDead || inSpecialAnimation) { return; }
             targetPlayer = player;
-            agent.isStopped = true;
-            inSpecialAnimation = false;
-            falling = false;
-            landing = false;
-            jumping = false;
+            nav.DisableMovement(true);
+            ResetVariables();
 
             bodyPartIndex = Utils.testing && Utils.isBeta ? DEBUG_bodyPartIndex : UnityEngine.Random.Range(0, 11);
             parentObject = targetPlayer.bodyParts[bodyPartIndex];
@@ -439,6 +420,14 @@ namespace SCP4666.Doll
             HitEnemyOnLocalClient();
         }
 
+        public void ResetVariables()
+        {
+            jumping = false;
+            landing = false;
+            falling = false;
+            inSpecialAnimation = false;
+        }
+
         [ClientRpc]
         public void DoAnimationClientRpc(string animationName)
         {
@@ -451,7 +440,7 @@ namespace SCP4666.Doll
         {
             if (!IsServer) { return; }
 
-            agent.isStopped = true;
+            nav.DisableMovement(true);
             KillDollClientRpc();
         }
 
@@ -466,10 +455,7 @@ namespace SCP4666.Doll
         public void ClingToPlayerClientRpc(ulong clientId, int _bodyPartIndex)
         {
             targetPlayer = PlayerFromId(clientId);
-            inSpecialAnimation = false;
-            falling = false;
-            landing = false;
-            jumping = false;
+            ResetVariables();
 
             bodyPartIndex = _bodyPartIndex;
             parentObject = targetPlayer.bodyParts[bodyPartIndex];
@@ -498,10 +484,7 @@ namespace SCP4666.Doll
         {
             animator.SetTrigger("die");
             parentObject = null;
-            jumping = false;
-            landing = false;
-            falling = false;
-            inSpecialAnimation = false;
+            ResetVariables();
             isEnemyDead = true;
             targetPlayer = null;
             Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
@@ -512,10 +495,7 @@ namespace SCP4666.Doll
         {
             animator.SetTrigger("reset");
             parentObject = null;
-            jumping = false;
-            landing = false;
-            falling = false;
-            inSpecialAnimation = false;
+            ResetVariables();
             targetPlayer = null;
             Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
         }

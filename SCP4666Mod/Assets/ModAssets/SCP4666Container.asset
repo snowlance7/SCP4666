@@ -12,4 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: -1097792660, guid: 41d6645f64e86c743812eb594070972f, type: 3}
   m_Name: SCP4666Container
   m_EditorClassIdentifier: 
-  assetBundles: []
+  assetBundles:
+  - assetBundleName: scp4666_assets
+    configName: DawnConfigs
