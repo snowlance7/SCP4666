@@ -21,14 +21,15 @@ namespace SCP4666
 {
     [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
     [BepInDependency(DawnLib.PLUGIN_GUID)]
+    [BepInDependency(Dusk.MyPluginInfo.PLUGIN_GUID)]
     public class Plugin : BaseUnityPlugin
     {
 #pragma warning disable CS8618
         public static Plugin Instance;
         public static ManualLogSource logger;
-        public static AssetBundle ModAssets;
 #pragma warning restore CS8618
 
+        public static AssetBundle? ModAssets;
         private readonly Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
         public static PlayerControllerB localPlayer { get { return GameNetworkManager.Instance.localPlayerController; } }
         public static PlayerControllerB PlayerFromId(ulong id) { return StartOfRound.Instance.allPlayerScripts.Where(x => x.actualClientId == id).First(); }
@@ -48,15 +49,14 @@ namespace SCP4666
 
             InitializeNetworkBehaviours();
 
-            // Loading Assets
-            string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-
-            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "Assets/scp4666_assets"));
-
             //AssetBundle mainBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_mainassets"));
+            //AssetBundle mainBundle = AssetBundleUtils.LoadBundle(Assembly.GetExecutingAssembly(), "scp4666_mainassets");
             AssetBundle mainBundle = AssetBundleUtils.LoadBundle(Assembly.GetExecutingAssembly(), "scp4666_mainassets");
             Mod = DuskMod.RegisterMod(this, mainBundle);
-            Mod.RegisterContentHandlers();rg
+            Mod.RegisterContentHandlers();
+
+            // Load Assets
+            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "Assets/scp4666_assets"));
 
             // Finished
             Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");

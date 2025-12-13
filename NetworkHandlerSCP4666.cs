@@ -99,7 +99,7 @@ namespace SCP4666
         [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]
         static void SpawnNetworkHandler()
         {
-            if (!IsServerOrHost) { return; }
+            if (!IsServerOrHost || networkPrefab == null) { return; }
 
             var networkHandlerHost = UnityEngine.Object.Instantiate(networkPrefab, Vector3.zero, Quaternion.identity);
             networkHandlerHost!.GetComponent<NetworkObject>().Spawn();
