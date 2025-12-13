@@ -40,8 +40,6 @@ namespace SCP4666.Doll
         private Vector3 destination;
 
         public bool isInsideFactory;
-        Vector3 mainEntranceInsidePosition;
-        Vector3 mainEntranceOutsidePosition;
         List<EntranceTeleport> entrances = [];
 
         Vector3 targetFloorPosition;
@@ -109,8 +107,6 @@ namespace SCP4666.Doll
             StartOfRound.Instance.LocalPlayerDamagedEvent.AddListener(LocalPlayerDamaged);
             Instances.Add(this);
 
-            mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(true, false);
-            mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(true, true);
             entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
 
             nav.DisableMovement(true);

@@ -5,6 +5,6 @@
   "description": "Adds the Yuleman to the game",
   "dependencies": [
     "BepInEx-BepInExPack-5.4.2100",
-    "TeamXiaolan-DawnLib-0.5.3"
+    "TeamXiaolan-DawnLib-0.5.9"
   ]
 }

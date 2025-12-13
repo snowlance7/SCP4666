@@ -61,10 +61,9 @@ namespace SCP4666
         public new bool isOutside => nav.IsAgentOutside();
 
         Vector3 mainEntranceOutsidePosition;
-        Vector3 mainEntranceInsidePosition;
         List<EntranceTeleport> entrances = [];
 
-        List<PlayerControllerB> TargetPlayers = [];
+        List<PlayerControllerB> targetPlayers = [];
 
         bool localPlayerHasSeenYuleman;
         bool spawnedAndVisible;
@@ -90,7 +89,7 @@ namespace SCP4666
 
         int dollsToSpawn;
         bool useBombDolls;
-        private float timeSinceSwitchBehavior;
+        float timeSinceSwitchBehavior;
 
         public bool isInsideFactory => !isOutside;
 
@@ -127,6 +126,7 @@ namespace SCP4666
         const float spawnTurnCompassSpeed = 20f;
         const float LOSOffset = 2f;
         const float grabPlayerCooldown = 10f;
+        const bool playBossMusic = true;
 
         public enum State
         {
@@ -151,7 +151,6 @@ namespace SCP4666
 
             nav.SetAllValues(isOutside: true);
 
-            mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition();
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(false, true);
             entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
 
@@ -202,6 +201,8 @@ namespace SCP4666
 
         public void CustomEnemyAIUpdate()
         {
+            if (!IsServer) { return; }
+
             if (inSpecialAnimation)
             {
                 nav.StopAgent();
@@ -236,6 +237,7 @@ namespace SCP4666
             timeSinceGrabPlayer += Time.deltaTime;
             timeSinceGroundSlam += Time.deltaTime;
             timeSinceDollSpawning += Time.deltaTime;
+            timeSinceSwitchBehavior += Time.deltaTime;
 
             if (currentBehaviourStateIndex == (int)State.Spawning)
             {
@@ -264,6 +266,15 @@ namespace SCP4666
             {
                 inSpecialAnimationWithPlayer.transform.position = ChildSackTransform.position;
                 inSpecialAnimationWithPlayer.takingFallDamage = false;
+            }
+
+            if (targetPlayers.Contains(localPlayer) && playBossMusic)
+            {
+                MusicSource.Play();
+            }
+            else
+            {
+                MusicSource.Stop();
             }
         }
 
@@ -296,7 +307,7 @@ namespace SCP4666
                         SwitchToBehaviourClientRpc((int)State.Abducting);
                         return;
                     }
-
+                    // TODO: Set up configs for disabling certain attacks/mechanics
                     // Teleport on cooldown
                     if (CanDoSpecialAction() && timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance && GetTeleportNode()
                         && (!Utils.isBeta || DEBUG_Teleport))
@@ -305,6 +316,7 @@ namespace SCP4666
                         return;
                     }
 
+                    // Spawn dolls on cooldown
                     if (CanDoSpecialAction() && timeSinceDollSpawning > dollSpawningCooldown
                         && (!Utils.isBeta || DEBUG_SpawnDolls))
                     {
@@ -511,7 +523,7 @@ namespace SCP4666
             mostOptimalDistance = Mathf.Infinity;
             PlayerControllerB playerControllerB = targetPlayer;
             targetPlayer = null;
-            foreach (PlayerControllerB player in TargetPlayers.ToList())
+            foreach (PlayerControllerB player in targetPlayers.ToList())
             {
                 if (Utils.isBeta && !DEBUG_TargetHost && player.isHostPlayerObject) { continue; }
                 if (PlayerIsTargetable(player))
@@ -699,7 +711,7 @@ namespace SCP4666
             {
                 if (localPlayer == inSpecialAnimationWithPlayer)
                 {
-                    NetworkHandlerSCP4666.Instance?.BlackScreenOverlay.SetActive(false);
+                    NetworkHandlerSCP4666.Instance?.blackScreenOverlay.SetActive(false);
                     FreezePlayer(localPlayer, false);
                     Instance.AllowPlayerDeathAfterDelay(5f);
                 }
@@ -739,7 +751,7 @@ namespace SCP4666
 
             logger.LogDebug("DollsToSpawn: " +  dollsToSpawn);
             dollsToSpawn -= 1;
-            EvilFleshDollAI doll = GameObject.Instantiate(NetworkHandlerSCP4666.Instance.EvilDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>();
+            EvilFleshDollAI doll = GameObject.Instantiate(NetworkHandlerSCP4666.Instance.evilDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>();
             doll.yulemanThrownBy = this;
             doll.NetworkObject.Spawn(destroyWithScene: true);
 
@@ -894,7 +906,7 @@ namespace SCP4666
             inSpecialAnimation = false;
             isGrabbingPlayer = false;
             if (inSpecialAnimationWithPlayer == null) { logger.LogError("inSpecialAnimationWithPlayer is null in PutPlayerInSack()"); return; }
-            TargetPlayers.Remove(inSpecialAnimationWithPlayer);
+            targetPlayers.Remove(inSpecialAnimationWithPlayer);
 
             inSpecialAnimationWithPlayer.transform.SetParent(ChildSackTransform);
             isPlayerInSack = true;
@@ -904,7 +916,7 @@ namespace SCP4666
 
             if (localPlayer == inSpecialAnimationWithPlayer)
             {
-                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(true);
+                NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(true);
                 StartOfRound.Instance.allowLocalPlayerDeath = false;
             }
 
@@ -1028,17 +1040,21 @@ namespace SCP4666
         public void AddTargetPlayerServerRpc(ulong clientId)
         {
             if (!IsServer) { return; }
+            AddTargetPlayerClientRpc(clientId);
+        }
 
+        [ClientRpc]
+        public void AddTargetPlayerClientRpc(ulong clientId)
+        {
             PlayerControllerB player = PlayerFromId(clientId);
 
             if (currentBehaviourStateIndex == (int)State.Spawning)
             {
-                SwitchToBehaviourClientRpc((int)State.Chasing);
-                DoAnimationClientRpc("start");
+                SwitchToBehaviourStateOnLocalClient((int)State.Chasing);
+                creatureAnimator.SetTrigger("start");
             }
 
-            if (TargetPlayers.Contains(player)) { return; }
-            TargetPlayers.Add(player);
+            if (!targetPlayers.Contains(player)) { targetPlayers.Add(player); }
 
             /*if (currentBehaviourStateIndex == (int)State.Abducting) // TODO: Test this
             {

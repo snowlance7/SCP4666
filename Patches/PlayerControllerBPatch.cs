@@ -15,18 +15,7 @@ namespace SCP4666.Patches
         [HarmonyPostfix]
         public static void ConnectClientToPlayerObjectPostfix(PlayerControllerB __instance)
         {
-            try
-            {
-                if (__instance != localPlayer) { return; }
-                NetworkHandlerSCP4666.Instance.BlackScreenOverlay = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/BlackScreenOverlay.prefab");
-                NetworkHandlerSCP4666.Instance.BlackScreenOverlay = GameObject.Instantiate(NetworkHandlerSCP4666.Instance.BlackScreenOverlay);
-                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(false);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e);
-                return;
-            }
+            NetworkHandlerSCP4666.Instance.SpawnOverlay(__instance);
         }
 
         [HarmonyPatch(nameof(PlayerControllerB.KillPlayer))]
@@ -39,7 +28,7 @@ namespace SCP4666.Patches
                 Utils.MakePlayerInvisible(__instance, false);
 
                 if (__instance != localPlayer) { return; }
-                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(false);
+                NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(false);
                 Utils.FreezePlayer(__instance, false);
                 if (ChildSackBehavior.localPlayerSizeChangedFromSack)
                 {

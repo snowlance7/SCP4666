@@ -21,9 +21,12 @@ namespace SCP4666
 #pragma warning disable CS8618
         public static NetworkHandlerSCP4666 Instance { get; private set; }
 
-        public GameObject BlackScreenOverlay;
-        public GameObject EvilDollPrefab;
+        public GameObject blackScreenOverlayPrefab;
+        public GameObject evilDollPrefab;
 #pragma warning restore CS8618
+
+        [NonSerialized]
+        public GameObject? blackScreenOverlay;
 
         public override void OnNetworkSpawn()
         {
@@ -49,6 +52,12 @@ namespace SCP4666
             }
         }
 
+        public void SpawnOverlay(PlayerControllerB player)
+        {
+            if (player != localPlayer) { return; }
+            blackScreenOverlay = Instantiate(blackScreenOverlayPrefab);
+        }
+
         [ClientRpc]
         private void ChangePlayerSizeClientRpc(ulong clientId, float size)
         {
@@ -69,6 +78,7 @@ namespace SCP4666
     public class NetworkObjectManager
     {
         static GameObject? networkPrefab;
+        //static GameObject? evilDollPrefab;
         private static ManualLogSource logger = Plugin.logger;
 
         [HarmonyPostfix, HarmonyPatch(typeof(GameNetworkManager), nameof(GameNetworkManager.Start))]
@@ -78,9 +88,12 @@ namespace SCP4666
                 return;
 
             if (ModAssets == null) { logger.LogError("Couldnt get ModAssets to create network handler"); return; }
-            networkPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab"); // TODO: Set this up in unity editor
+            networkPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab");
 
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
+
+            /*evilDollPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/SCP4666/EvilDoll/EvilFleshDoll.prefab");
+            NetworkManager.Singleton.AddNetworkPrefab(evilDollPrefab);*/
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]

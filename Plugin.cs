@@ -2,6 +2,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using Dawn;
+using Dawn.Utils;
 using Dusk;
 using GameNetcodeStuff;
 using HarmonyLib;
@@ -50,18 +51,12 @@ namespace SCP4666
             // Loading Assets
             string sAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_mainassets"));
-            if (ModAssets == null)
-            {
-                Logger.LogError($"Failed to load custom assets.");
-                return;
-            }
+            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "Assets/scp4666_assets"));
 
-            Mod = DuskMod.RegisterMod(this, ModAssets);
-            Mod.RegisterContentHandlers();
-
-            GameObject EvilDoll = ModAssets.LoadAsset<GameObject>("Assets/ModAssets/Yuleman/EvilDoll/EvilFleshDoll.prefab");
-            NetworkManager.Singleton.AddNetworkPrefab(EvilDoll);
+            //AssetBundle mainBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_mainassets"));
+            AssetBundle mainBundle = AssetBundleUtils.LoadBundle(Assembly.GetExecutingAssembly(), "scp4666_mainassets");
+            Mod = DuskMod.RegisterMod(this, mainBundle);
+            Mod.RegisterContentHandlers();rg
 
             // Finished
             Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");

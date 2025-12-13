@@ -15,7 +15,7 @@ namespace SCP4666.Patches
         {
             try
             {
-                NetworkHandlerSCP4666.Instance.BlackScreenOverlay.SetActive(false);
+                NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(false);
                 Utils.FreezePlayer(localPlayer, false);
             }
             catch (Exception e)

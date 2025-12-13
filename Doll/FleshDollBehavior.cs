@@ -1,6 +1,7 @@
 ﻿using BepInEx.Logging;
 using Dawn.Utils;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
@@ -25,7 +26,6 @@ namespace SCP4666
         public static HashSet<FleshDollBehavior> Instances = [];
 
         public Vector3 destination;
-        NavMeshPath path1 = new NavMeshPath();
 
         const float AIIntervalTime = 0.2f;
         float timeSinceIntervalUpdate;
@@ -35,14 +35,19 @@ namespace SCP4666
         bool isThrown;
         bool landing;
 
+        bool canMove => !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
+
         bool isInsideFactory;
-        Vector3 mainEntranceInsidePosition;
-        Vector3 mainEntranceOutsidePosition;
+        List<EntranceTeleport> entrances = [];
+
         Ray grenadeThrowRay;
         RaycastHit grenadeHit;
         const int stunGrenadeMask = 268437761;
 
         Vector3 shipNode => StartOfRound.Instance.insideShipPositions[5].position;
+
+        // Configs
+        const bool canBeGrabbedWhenHoldingScrap = true;
 
         public override void Start()
         {
@@ -66,11 +71,12 @@ namespace SCP4666
             }
             if (playerHeldBy != null)
             {
-                isInsideFactory = playerHeldBy.isInsideFactory;
+                nav.SetAllValues(!playerHeldBy.isInsideFactory);
+                //isInsideFactory = playerHeldBy.isInsideFactory;
             }
             if (StartOfRound.Instance.currentLevel.spawnEnemiesAndScrap)
             {
-                agent.enabled = !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
+                //canMove = !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
                 /*if (fallTime >= 1f && !reachedFloorTarget)
                 {
                     targetFloorPosition = base.transform.position;
@@ -78,7 +84,7 @@ namespace SCP4666
                     agent.enabled = true;
                 }*/
             }
-            if (isHeld || isHeldByEnemy || !reachedFloorTarget || fallTime < 1f || isInElevator)
+            if (!canMove/*isHeld || isHeldByEnemy || !reachedFloorTarget || fallTime < 1f || isInElevator*/)
             {
                 base.Update();
             }
@@ -88,43 +94,22 @@ namespace SCP4666
                 if (timeSinceIntervalUpdate > AIIntervalTime)
                 {
                     timeSinceIntervalUpdate = 0f;
-
-                    if (heldObject != null)
-                    {
-                        if (isInsideFactory)
-                        {
-                            if (!SetDestinationToPosition(mainEntranceInsidePosition, true))
-                            {
-                                logger.LogDebug("No path to main entrance position");
-                                DropItemClientRpc(transform.position);
-                                return;
-                            }
-                            if (Vector3.Distance(transform.position, mainEntranceInsidePosition) < 1f)
-                            {
-                                Teleport(mainEntranceOutsidePosition, false);
-                                return;
-                            }
-                        }
-                        else
-                        {
-                            if (!SetDestinationToPosition(shipNode, true) || Vector3.Distance(transform.position, shipNode) < 1f)
-                            {
-                                logger.LogDebug("No path to ship node from outside");
-                                DropItemClientRpc(transform.position);
-                                return;
-                            }
-                        }
-                    }
+                    DoAIInterval();
                 }
             }
         }
 
-        public void Teleport(Vector3 position, bool _isInsideFactory)
+        public void DoAIInterval()
         {
-            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-            if (IsServer) { agent.Warp(position); }
-            transform.position = position;
-            isInsideFactory = _isInsideFactory;
+            if (heldObject != null)
+            {
+                nav.DisableMovement(!SetDestinationToPosition(shipNode));
+
+                if (Vector3.Distance(transform.position, shipNode) < 1f)
+                {
+                    DropItemClientRpc(transform.position);
+                }
+            }
         }
 
         public override void LateUpdate()
@@ -197,26 +182,39 @@ namespace SCP4666
             fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
         }
 
-        public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
+        public bool SetDestinationToPosition(Vector3 position)
         {
-            if (checkForPath)
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
+            if (!SmartCanPathToPoint(position)) { return false; }
+            return nav.DoPathingToDestination(position);
+        }
+
+        public bool SmartCanPathToPoint(Vector3 position)
+        {
+            Vector3 scpPos = RoundManager.Instance.GetNavMeshPosition(transform.position, RoundManager.Instance.navHit);
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
+
+            if (nav.CanPathToPoint(scpPos, position) > 0)
+                return true;
+
+            foreach (var entrance in entrances)
             {
-                position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 1.75f);
-                path1 = new NavMeshPath();
-                if (!agent.CalculatePath(position, path1))
-                {
-                    return false;
-                }
-                if (Vector3.Distance(path1.corners[path1.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 2.7f)) > 1.55f)
-                {
-                    return false;
-                }
+                bool relevantEntrance = isInsideFactory ? !entrance.isEntranceToBuilding : entrance.isEntranceToBuilding;
+                if (!relevantEntrance)
+                    continue;
+
+                Vector3 teleportFrom = RoundManager.Instance.GetNavMeshPosition(entrance.entrancePoint.position, RoundManager.Instance.navHit);
+
+                if (entrance.exitPoint == null && !entrance.FindExitPoint())
+                    continue;
+
+                Vector3 teleportTo = RoundManager.Instance.GetNavMeshPosition(entrance.exitPoint!.position, RoundManager.Instance.navHit);
+
+                if (nav.CanPathToPoint(scpPos, teleportFrom) > 0 && nav.CanPathToPoint(teleportTo, position) > 0)
+                    return true;
             }
 
-            //moveTowardsDestination = true;
-            destination = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, -1f);
-            agent.SetDestination(destination);
-            return true;
+            return false;
         }
 
         public override void OnHitGround()
@@ -225,21 +223,10 @@ namespace SCP4666
 
             try
             {
-                if (IsServer && isThrown && (StartOfRound.Instance.shipHasLanded || Utils.inTestRoom))
+                if (IsServer && isThrown && StartOfRound.Instance.shipHasLanded)
                 {
                     heldObject = GetClosestItem(1f);
                     if (heldObject == null) { logger.LogDebug("Cant find item to grab"); return; }
-
-                    if (isInsideFactory)
-                    {
-                        mainEntranceInsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: false);
-                        if (!Utils.CalculatePath(transform.position, mainEntranceInsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
-                    }
-                    else
-                    {
-                        mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(getTeleportPosition: true, getOutsideEntrance: true);
-                        if (!Utils.CalculatePath(transform.position, mainEntranceOutsidePosition)) { logger.LogDebug("Cant find path to entrance"); return; }
-                    }
                     GrabItemClientRpc(heldObject.NetworkObject);
                 }
             }
@@ -257,8 +244,8 @@ namespace SCP4666
 
             foreach (GrabbableObject item in GameObject.FindObjectsOfType<GrabbableObject>())
             {
+                if (item == null || item == this || !item.grabbable || !item.grabbableToEnemies || isHeld || isHeldByEnemy) { continue; }
                 logger.LogDebug(item.name);
-                if (item == null || !item.grabbable || !item.grabbableToEnemies) { continue; }
                 float distance = Vector3.Distance(transform.position, item.transform.position);
 
                 if (distance < closestDistance)
@@ -343,7 +330,7 @@ namespace SCP4666
             itemGrabbableObject.startFallingPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(itemGrabbableObject.transform.position);
             itemGrabbableObject.targetFloorPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(targetFloorPosition);
             itemGrabbableObject.floorYRot = -1;
-            //itemGrabbableObject.DiscardItemFromEnemy();
+            itemGrabbableObject.DiscardItemFromEnemy();
             itemGrabbableObject.isHeldByEnemy = false;
             HoarderBugAI.grabbableObjectsInMap.Add(itemGrabbableObject.gameObject);
             //HoarderBugAI.grabbableObjectsInMap.Add(gameObject);
@@ -352,7 +339,7 @@ namespace SCP4666
             grabbable = true;
             grabbableToEnemies = true;
             collider.enabled = true;
-            itemAnimator.SetTrigger("idle");
+            itemAnimator.SetTrigger("idle"); // TODO: Maybe switch this out to him falling down toys story style?
         }
     }
 }
