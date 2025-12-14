@@ -173,7 +173,6 @@ namespace SCP4666
             base.OnNetworkSpawn();
             Instances.Add(this);
         }
-
         public override void OnNetworkDespawn()
         {
             Instances.Remove(this);
@@ -192,7 +191,7 @@ namespace SCP4666
 
             for (int i = 0; i < amount; i++)
             {
-                Item giftItem = StartOfRound.Instance.allItemsList.itemsList.Where(x => x.name == "GiftBox").FirstOrDefault();
+                Item giftItem = LethalContent.Items[ItemKeys.Gift].Item;
                 Vector3 pos = RoundManager.Instance.GetRandomPositionInRadius(transform.position, 1, 1.5f, random);
                 GiftBoxItem gift = GameObject.Instantiate(giftItem.spawnPrefab, pos, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform).GetComponentInChildren<GiftBoxItem>();
                 gift.NetworkObject.Spawn(destroyWithScene: true);
@@ -270,11 +269,13 @@ namespace SCP4666
 
             if (targetPlayers.Contains(localPlayer) && playBossMusic)
             {
-                MusicSource.Play();
+                if (!MusicSource.isPlaying)
+                    MusicSource.Play();
             }
             else
             {
-                MusicSource.Stop();
+                if (MusicSource.isPlaying)
+                    MusicSource.Stop();
             }
         }
 
@@ -287,14 +288,10 @@ namespace SCP4666
                 case (int)State.Spawning:
                     agent.speed = 0f;
 
-                    if (!spawnedAndVisible)
+                    if (!spawnedAndVisible && !InLineOfSight())
                     {
-                        if (!InLineOfSight())
-                        {
-                            spawnedAndVisible = true;
-                            BecomeVisibleClientRpc();
-                        }
-                        return;
+                        spawnedAndVisible = true;
+                        BecomeVisibleClientRpc();
                     }
 
                     break;
@@ -569,6 +566,8 @@ namespace SCP4666
             thrownKnifeScript.enabled = false;
 
             MakeKnifeInvisible();
+            targetPlayers.Clear();
+            MusicSource.Stop();
 
             if (IsServer)
             {
@@ -1051,15 +1050,16 @@ namespace SCP4666
             if (currentBehaviourStateIndex == (int)State.Spawning)
             {
                 SwitchToBehaviourStateOnLocalClient((int)State.Chasing);
+                inSpecialAnimation = true;
                 creatureAnimator.SetTrigger("start");
             }
 
             if (!targetPlayers.Contains(player)) { targetPlayers.Add(player); }
 
-            /*if (currentBehaviourStateIndex == (int)State.Abducting) // TODO: Test this
+            if (currentBehaviourStateIndex == (int)State.Abducting && !isPlayerInSack) // TODO: Test this
             {
-                SwitchToBehaviourClientRpc((int)State.Chasing);
-            }*/
+                SwitchToBehaviourStateOnLocalClient((int)State.Chasing);
+            }
 
             logger.LogDebug($"Added {player.playerUsername} to targeted players");
         }

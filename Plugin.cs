@@ -29,12 +29,11 @@ namespace SCP4666
         public static ManualLogSource logger;
 #pragma warning restore CS8618
 
-        public static AssetBundle? ModAssets;
         private readonly Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
         public static PlayerControllerB localPlayer { get { return GameNetworkManager.Instance.localPlayerController; } }
         public static PlayerControllerB PlayerFromId(ulong id) { return StartOfRound.Instance.allPlayerScripts.Where(x => x.actualClientId == id).First(); }
         public static bool IsServerOrHost { get { return NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost; } }
-        public static DuskMod Mod { get; private set; } = null!;
+        //public static DuskMod Mod { get; private set; } = null!;
 
         private void Awake()
         {
@@ -51,12 +50,9 @@ namespace SCP4666
 
             //AssetBundle mainBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_mainassets"));
             //AssetBundle mainBundle = AssetBundleUtils.LoadBundle(Assembly.GetExecutingAssembly(), "scp4666_mainassets");
-            AssetBundle mainBundle = AssetBundleUtils.LoadBundle(Assembly.GetExecutingAssembly(), "scp4666_mainassets");
+            /*AssetBundle mainBundle = AssetBundleUtils.LoadBundle(Assembly.GetExecutingAssembly(), "scp4666_mainassets");
             Mod = DuskMod.RegisterMod(this, mainBundle);
-            Mod.RegisterContentHandlers();
-
-            // Load Assets
-            ModAssets = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "Assets/scp4666_assets"));
+            Mod.RegisterContentHandlers();*/
 
             // Finished
             Logger.LogInfo($"{MyPluginInfo.PLUGIN_GUID} v{MyPluginInfo.PLUGIN_VERSION} has loaded!");

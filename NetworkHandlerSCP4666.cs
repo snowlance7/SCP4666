@@ -1,11 +1,12 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using BepInEx.Logging;
+﻿using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
@@ -87,8 +88,10 @@ namespace SCP4666
             if (networkPrefab != null)
                 return;
 
-            if (ModAssets == null) { logger.LogError("Couldnt get ModAssets to create network handler"); return; }
-            networkPrefab = (GameObject)ModAssets.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab");
+            AssetBundle networkHandlerBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Plugin.Instance.Info.Location), "scp4666_networkhandler"));
+
+            if (networkHandlerBundle == null) { logger.LogError("Couldnt get assets to create network handler"); return; }
+            networkPrefab = (GameObject)networkHandlerBundle.LoadAsset("Assets/ModAssets/NetworkHandlerSCP4666.prefab");
 
             NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
 

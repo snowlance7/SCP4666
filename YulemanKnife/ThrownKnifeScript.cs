@@ -8,8 +8,6 @@ namespace SCP4666.YulemanKnife
 {
     internal class ThrownKnifeScript : MonoBehaviour
     {
-        private static ManualLogSource logger = Plugin.logger;
-
 #pragma warning disable CS8618
         public AudioSource KnifeAudio;
         public AudioClip[] TearSFX;
