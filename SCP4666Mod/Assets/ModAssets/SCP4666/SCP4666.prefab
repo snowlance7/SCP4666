@@ -10003,15 +10003,9 @@ MonoBehaviour:
   GroundSlamSFX: {fileID: 8300000, guid: 212859c32fe8e9e489c9f047fe8b5988, type: 3}
   YulemanMesh: {fileID: 5829010900359220335}
   turnCompass: {fileID: 8457018304797237307}
+  evilDollPrefab: {fileID: 116494380623710686, guid: 5c4dfbb2b573352439a01f442bd862bf,
+    type: 3}
   ThrowingKnifePrefab: {fileID: 6565499476726160040, guid: 758de97574ea0d044a30f7f98fcfbeb9,
-    type: 3}
-  ChildSackPrefab: {fileID: 3158200818442992676, guid: f5970850dd5a8ff42bbcbabf649f282c,
-    type: 3}
-  YulemanKnifePrefab: {fileID: 1536395025649834618, guid: ce88419cc557a8c4fafcaf38eaac6c63,
-    type: 3}
-  EvilFleshDollPrefab: {fileID: 116494380623710686, guid: 5c4dfbb2b573352439a01f442bd862bf,
-    type: 3}
-  FleshDollPrefab: {fileID: 5465563971435888404, guid: 0c82f9176f1083c45950aa42469503a1,
     type: 3}
   collider: {fileID: 6603015249542837958}
   KnifeMesh: {fileID: 6093058867995690100}

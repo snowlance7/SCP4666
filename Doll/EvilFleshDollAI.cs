@@ -15,7 +15,7 @@ using static SCP4666.Plugin;
 
 namespace SCP4666.Doll
 {
-    internal class EvilFleshDollAI : NetworkBehaviour // TODO: Need to test and fix
+    internal class EvilFleshDollAI : NetworkBehaviour // TODO: Need to test and fix // TODO: Test networking
     {
         public static int DEBUG_bodyPartIndex = 0;
 
