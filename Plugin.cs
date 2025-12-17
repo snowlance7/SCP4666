@@ -67,7 +67,7 @@ namespace SCP4666
                 StartOfRound.Instance.allowLocalPlayerDeath = true;
             }
 
-            StartCoroutine(AllowPlayerDeathAfterDelay(delay));
+            Instance.StartCoroutine(AllowPlayerDeathAfterDelay(delay));
         }
 
         private static void InitializeNetworkBehaviours()

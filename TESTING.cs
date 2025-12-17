@@ -26,14 +26,18 @@ namespace SCP4666
     [HarmonyPatch]
     public class TESTING : MonoBehaviour
     {
-        private static ManualLogSource logger = Plugin.logger;
+        public static bool cameraEnabled;
 
         [HarmonyPostfix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.PingScan_performed))]
         public static void PingScan_performedPostFix()
         {
             if (!Utils.isBeta) { return; }
             if (!Utils.testing) { return; }
-            SCP4666AI.Instances[0]?.DEBUG_DoGroundSlam();
+            SCP4666AI scp = SCP4666AI.Instances[0];
+            cameraEnabled = !cameraEnabled;
+            scp.cameraSack.enabled = cameraEnabled;
+            StartOfRound.Instance.SwitchCamera(cameraEnabled ? SCP4666AI.Instances[0].cameraSack : localPlayer.gameplayCamera);
+            logger.LogDebug("Camera enabled: " + cameraEnabled);
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SubmitChat_performed))]

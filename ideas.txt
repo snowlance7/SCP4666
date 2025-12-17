@@ -1,0 +1,9 @@
+Calculate if he should kidnap player based on these conditions:
+- current hp
+- player hp
+- is player child
+- damage done by player
+- is player alone
+- is targetplayer
+
+- add shotgun resistance and config

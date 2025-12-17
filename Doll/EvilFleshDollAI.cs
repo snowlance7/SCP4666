@@ -53,6 +53,7 @@ namespace SCP4666.Doll
         bool isEnemyDead;
 
         bool bombTicking;
+        float tickingTimer = 15f;
 
         bool damagingPlayer;
 
@@ -112,6 +113,8 @@ namespace SCP4666.Doll
             nav.DisableMovement(true);
             nav.SetAllValues(isOutside: yulemanThrownBy.isOutside);
 
+            SCP4666AI.onPlayerGrabbed.AddListener(OnPlayerGrabbed);
+
             //falling = false;
             //landing = false;
             animator.SetTrigger("fall");
@@ -124,7 +127,9 @@ namespace SCP4666.Doll
 
             if (bombTicking)
             {
-                if (!audioSource.isPlaying)
+                tickingTimer -= Time.deltaTime;
+
+                if (tickingTimer <= 0)
                 {
                     bombTicking = false;
                     Landmine.SpawnExplosion(transform.position, true);
@@ -194,6 +199,7 @@ namespace SCP4666.Doll
                 if (yulemanThrownBy == null) { return; }
                 if (!SetDestinationToPosition(yulemanThrownBy.transform.position))
                 {
+                    nav.StopAgent();
                     return;
                 }
             }
@@ -414,6 +420,12 @@ namespace SCP4666.Doll
             logger.LogDebug("Local player damaged");
             if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer || damagingPlayer) { return; }
             HitEnemyOnLocalClient();
+        }
+
+        public void OnPlayerGrabbed(PlayerControllerB player)
+        {
+            if (player != targetPlayer || !IsServer) { return; }
+            DropDollClientRpc();
         }
 
         public void ResetVariables()

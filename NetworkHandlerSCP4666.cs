@@ -14,7 +14,7 @@ namespace SCP4666
     {
 #pragma warning disable CS8618
         public static NetworkHandlerSCP4666 Instance { get; private set; }
-        public GameObject blackScreenOverlay;
+        //public GameObject blackScreenOverlay;
 #pragma warning restore CS8618
 
         public override void OnNetworkSpawn()
@@ -34,14 +34,14 @@ namespace SCP4666
 
         public void Update()
         {
-            if (blackScreenOverlay.activeSelf)
+            /*if (blackScreenOverlay.activeSelf)
             {
                 if (!localPlayer.isPlayerControlled || !SCP4666AI.Instances.Any(x => x.inSpecialAnimationWithPlayer == localPlayer))
                 {
                     blackScreenOverlay.SetActive(false);
                     Utils.FreezePlayer(localPlayer, false);
                 }
-            }
+            }*/
         }
 
         [ClientRpc]
