@@ -322,7 +322,7 @@ namespace SCP4666
                         GameObject? teleportNode = GetClosestNodeBehindPlayer(targetPlayer, 1f);
                         if (teleportNode != null)
                         {
-                            LongTeleport(targetNode.position, !targetPlayer.isInsideFactory);
+                            LongTeleport(teleportNode.transform.position, targetPlayer.isInsideFactory);
                             return;
                         }
                     }
@@ -914,7 +914,7 @@ namespace SCP4666
 
             if (localPlayer == inSpecialAnimationWithPlayer)
             {
-                NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(true);
+                //NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(true); // TODO: Temp, trying something new
                 StartOfRound.Instance.allowLocalPlayerDeath = false;
             }
 
