@@ -62,6 +62,7 @@ namespace SCP4666
         {
             IEnumerator AllowPlayerDeathAfterDelay(float delay)
             {
+                StartOfRound.Instance.allowLocalPlayerDeath = false;
                 yield return new WaitForSeconds(delay);
                 StartOfRound.Instance.allowLocalPlayerDeath = true;
             }

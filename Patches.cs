@@ -1,32 +1,26 @@
-﻿using HarmonyLib;
+﻿using GameNetcodeStuff;
+using HarmonyLib;
+using SCP4666.Doll;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using Unity.Netcode;
 using UnityEngine;
 using static SCP4666.Plugin;
 
-namespace SCP4666.Patches
+namespace SCP4666
 {
-    [HarmonyPatch(typeof(StartOfRound))]
-    internal class StartOfRoundPatch
+    [HarmonyPatch]
+    internal class Patches
     {
-        [HarmonyPatch(nameof(StartOfRound.ReviveDeadPlayers))]
-        [HarmonyPostfix]
-        public static void ReviveDeadPlayersPostfix()
+        [HarmonyPostfix, HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.KillPlayer))]
+        public static void KillPlayerPostfix(PlayerControllerB __instance)
         {
-            try
-            {
-                NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(false);
-                Utils.FreezePlayer(localPlayer, false);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e);
-                return;
-            }
+            ChildSackBehavior.OnPlayerDeath(__instance);
         }
 
-        [HarmonyPatch(nameof(StartOfRound.ShipLeaveAutomatically))] // TODO: Test this
-        [HarmonyPrefix]
+        [HarmonyPrefix, HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.ShipLeaveAutomatically))]
         public static bool ShipLeaveAutomaticallyPrefix(bool leavingOnMidnight)
         {
             try
@@ -36,7 +30,7 @@ namespace SCP4666.Patches
                 ChildSackBehavior sack = GameObject.FindObjectsOfType<ChildSackBehavior>().Where(x => x.isInShipRoom).FirstOrDefault();
                 if (sack == null) { return true; }
 
-                logger.LogDebug("Sack found, attempting to stop ship leave and activating");
+                logger.LogDebug("Sack found, attempting to stop ship leave and revive players");
                 StartOfRound.Instance.allPlayersDead = false;
 
                 if (!IsServerOrHost) { return false; } // TODO: Test this

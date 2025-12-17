@@ -51,17 +51,6 @@ namespace SCP4666
                     EvilFleshDollAI.DEBUG_bodyPartIndex = int.Parse(args[1]);
                     HUDManager.Instance.DisplayTip("BodyPartIndex", args[1]);
                     break;
-                case "/doll":
-                    Plugin.logger.LogDebug("Spawning doll");
-                    GameObject obj = GameObject.Instantiate(NetworkHandlerSCP4666.Instance.evilDollPrefab, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
-                    obj.GetComponent<NetworkObject>().Spawn(true);
-                    break;
-                case "/bombDoll":
-                    Plugin.logger.LogDebug("Spawning bomb doll");
-                    GameObject bombObj = GameObject.Instantiate(NetworkHandlerSCP4666.Instance.evilDollPrefab, localPlayer.gameplayCamera.transform.position + localPlayer.gameplayCamera.transform.forward * 1f, localPlayer.transform.rotation);
-                    bombObj.GetComponent<NetworkObject>().Spawn(true);
-                    bombObj.GetComponent<EvilFleshDollAI>().SetBombDollClientRpc();
-                    break;
                 default:
                     Utils.ChatCommand(args);
                     break;

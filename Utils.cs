@@ -1,9 +1,11 @@
-﻿using GameNetcodeStuff;
+﻿using Dawn;
+using GameNetcodeStuff;
 using HarmonyLib;
 using PathfindingLib.API.SmartPathfinding;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Animations.Rigging;
@@ -342,17 +344,18 @@ namespace SCP4666
             }
         }
 
-        public static GameObject? GetClosestGameObjectToPosition(this List<GameObject> list, Vector3 position)
+        public static T? GetClosestToPosition<T>(this IEnumerable<T> list, Vector3 position, Func<T, Vector3> positionSelector) where T : class
         {
-            GameObject? closest = null;
+            T? closest = null;
             float closestDistance = Mathf.Infinity;
 
             foreach (var item in list)
             {
                 if (item == null) continue;
 
-                float distance = Vector3.Distance(position, item.transform.position);
-                if (distance > closestDistance) { continue; }
+                float distance = Vector3.Distance(position, positionSelector(item));
+                if (distance >= closestDistance) continue;
+
                 closest = item;
                 closestDistance = distance;
             }
@@ -360,17 +363,18 @@ namespace SCP4666
             return closest;
         }
 
-        public static GameObject? GetFarthestGameObjectFromPosition(this List<GameObject> list, Vector3 position)
+        public static T? GetFarthestFromPosition<T>(this IEnumerable<T> list, Vector3 position, Func<T, Vector3> positionSelector) where T : class
         {
-            GameObject? farthest = null;
+            T? farthest = null;
             float farthestDistance = 0f;
 
             foreach (var item in list)
             {
                 if (item == null) continue;
 
-                float distance = Vector3.Distance(position, item.transform.position);
-                if (distance < farthestDistance) { continue; }
+                float distance = Vector3.Distance(position, positionSelector(item));
+                if (distance <= farthestDistance) continue;
+
                 farthest = item;
                 farthestDistance = distance;
             }
@@ -602,6 +606,32 @@ namespace SCP4666
             if (players.Length <= 0) { return null; }
             int index = UnityEngine.Random.Range(0, players.Length);
             return players[index];
+        }
+
+        public static GrabbableObject? SpawnItem(NamespacedKey<DawnItemInfo> key, Vector3 position, Quaternion rotation = default, float fallTime = 0f)
+        {
+            if (!IsServerOrHost) { return null; }
+            GameObject obj = GameObject.Instantiate(LethalContent.Items[key].Item.spawnPrefab, position, rotation, StartOfRound.Instance.propsContainer);
+            GrabbableObject grabObj = obj.GetComponent<GrabbableObject>();
+            grabObj.fallTime = fallTime;
+            grabObj.NetworkObject.Spawn();
+            return grabObj;
+        }
+
+        public static void MufflePlayer(PlayerControllerB player, bool muffle)
+        {
+            if (player.currentVoiceChatAudioSource == null)
+            {
+                StartOfRound.Instance.RefreshPlayerVoicePlaybackObjects();
+            }
+            if (player.currentVoiceChatAudioSource != null)
+            {
+                OccludeAudio component = player.currentVoiceChatAudioSource.GetComponent<OccludeAudio>();
+                player.currentVoiceChatAudioSource.GetComponent<AudioLowPassFilter>().lowpassResonanceQ = muffle ? 5f : 1f;
+                component.overridingLowPass = muffle;
+                component.lowPassOverride = muffle ? 500f : 20000f;
+                player.voiceMuffledByEnemy = muffle;
+            }
         }
     }
 

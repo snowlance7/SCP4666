@@ -1,12 +1,10 @@
-﻿using GameNetcodeStuff;
+﻿using Dawn;
+using GameNetcodeStuff;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
-using Unity.Mathematics;
 using Unity.Netcode;
-using Unity.Netcode.Components;
 using UnityEngine;
 using static SCP4666.Plugin;
 
@@ -14,58 +12,101 @@ namespace SCP4666
 {
     public class ChildSackBehavior : PhysicsProp
     {
+        public static List<ChildSackBehavior> Instances { get; private set; } = [];
+
         public static bool localPlayerSizeChangedFromSack;
 
         // Configs
         const float minSize = 0.6f;
         const float maxSize = 0.8f;
+        const bool allowManualActivation = true;
+        public const bool activateOnTeamWipe = true;
 
-        public void Activate()
+        public override void Start()
         {
-            StartCoroutine(ActivateCoroutine());
+            base.Start();
+            Instances.Add(this);
         }
 
-        public IEnumerator ActivateCoroutine()
+        public override void OnDestroy()
         {
-            logger.LogDebug("In Activate()");
-            yield return new WaitForSeconds(5f);
+            Instances.Remove(this);
+            base.OnDestroy();
+        }
 
-            if (playerHeldBy != null) { playerHeldBy.DropAllHeldItemsAndSync(); } // TODO: Log this
+        public override void ItemActivate(bool used, bool buttonDown = true)
+        {
+            base.ItemActivate(used, buttonDown);
 
-            int playersRespawned = 0;
-            foreach (var player in StartOfRound.Instance.allPlayerScripts)
+            if (!buttonDown || !allowManualActivation) { return; }
+
+            playerHeldBy.DiscardHeldObject();
+            Activate();
+        }
+
+        public void Activate(float delay = 0f)
+        {
+            if (!IsServer) { return; }
+
+            IEnumerator ActivateCoroutine(float delay)
             {
-                if (!player.isPlayerDead) { continue; }
+                yield return null;
+                yield return new WaitForSeconds(delay);
 
-                if (playersRespawned == 0)
+                int playersRespawned = 0;
+                foreach (var player in StartOfRound.Instance.allPlayerScripts)
                 {
-                    float size = UnityEngine.Random.Range(minSize, maxSize);
-                    DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
-                    playersRespawned++;
-                    continue;
+                    if (!player.isPlayerDead || player.isPlayerControlled) { continue; }
+
+                    if (playersRespawned == 0)
+                    {
+                        float size = UnityEngine.Random.Range(minSize, maxSize);
+                        DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
+                        playersRespawned++;
+                        continue;
+                    }
+
+                    if (UnityEngine.Random.Range(0, 2) == 0)
+                    {
+                        float size = UnityEngine.Random.Range(minSize, maxSize);
+                        DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
+                        playersRespawned++;
+                    }
+                    else
+                    {
+                        Utils.SpawnItem(ItemKeys.Gift, transform.position);
+                    }
                 }
 
-                int num = UnityEngine.Random.Range(0, 2);
-                if (num == 0)
-                {
-                    float size = UnityEngine.Random.Range(minSize, maxSize);
-                    DoALotOfShitToRevivePlayerClientRpc(player.actualClientId, size);
-                    playersRespawned++;
-                }
-                else
-                {
-                    SpawnPresent();
-                }
+                NetworkObject.Despawn(true);
             }
 
-            NetworkObject.Despawn(true);
+            StartCoroutine(ActivateCoroutine(delay));
         }
 
-        public void SpawnPresent()
+        public static void OnPlayerDeath(PlayerControllerB player)
         {
-            Item giftItem = StartOfRound.Instance.allItemsList.itemsList.Where(x => x.name == "GiftBox").FirstOrDefault();
-            GiftBoxItem gift = GameObject.Instantiate(giftItem.spawnPrefab, transform.position, Quaternion.identity).GetComponentInChildren<GiftBoxItem>();
-            gift.NetworkObject.Spawn();
+            try
+            {
+                if (localPlayerSizeChangedFromSack)
+                {
+                    logger.LogDebug("Changing player size back to default size");
+                    localPlayerSizeChangedFromSack = false;
+                    NetworkHandlerSCP4666.Instance.ChangePlayerSizeServerRpc(player.actualClientId, 1f);
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e);
+                return;
+            }
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void ActivateServerRpc()
+        {
+            if (!IsServer) { return; }
+            Activate();
         }
 
         [ClientRpc]
