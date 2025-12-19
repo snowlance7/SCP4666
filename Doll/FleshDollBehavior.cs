@@ -71,20 +71,25 @@ namespace SCP4666
             }
             if (playerHeldBy != null)
             {
-                nav.SetAllValues(!playerHeldBy.isInsideFactory);
+                nav.agent.enabled = false;
+                nav.SetAllValues(playerHeldBy.isInsideFactory);
                 //isInsideFactory = playerHeldBy.isInsideFactory;
             }
-            if (StartOfRound.Instance.currentLevel.spawnEnemiesAndScrap)
+            if (isHeldByEnemy)
+            {
+                nav.agent.enabled = false;
+            }
+            /*if (StartOfRound.Instance.currentLevel.spawnEnemiesAndScrap)
             {
                 //canMove = !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
-                /*if (fallTime >= 1f && !reachedFloorTarget)
+                if (fallTime >= 1f && !reachedFloorTarget)
                 {
                     targetFloorPosition = base.transform.position;
                     destination = base.transform.position;
-                    agent.enabled = true;
-                }*/
-            }
-            if (!canMove/*isHeld || isHeldByEnemy || !reachedFloorTarget || fallTime < 1f || isInElevator*/)
+                    nav.agent.enabled = true;
+                }
+            }*/
+            if (isHeld || isHeldByEnemy || !reachedFloorTarget || fallTime < 1f || isInElevator)
             {
                 base.Update();
             }
@@ -103,7 +108,7 @@ namespace SCP4666
         {
             if (heldObject != null)
             {
-                nav.DisableMovement(!SetDestinationToPosition(shipNode));
+                //nav.DisableMovement(!SetDestinationToPosition(shipNode));
 
                 if (Vector3.Distance(transform.position, shipNode) < 1f)
                 {
@@ -184,56 +189,28 @@ namespace SCP4666
 
         public bool SetDestinationToPosition(Vector3 position)
         {
-            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-            if (!SmartCanPathToPoint(position)) { return false; }
+            position = RoundManager.Instance.GetNavMeshPosition(position);
             return nav.DoPathingToDestination(position);
-        }
-
-        public bool SmartCanPathToPoint(Vector3 position)
-        {
-            Vector3 scpPos = RoundManager.Instance.GetNavMeshPosition(transform.position, RoundManager.Instance.navHit);
-            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-
-            if (nav.CanPathToPoint(scpPos, position) > 0)
-                return true;
-
-            foreach (var entrance in entrances)
-            {
-                bool relevantEntrance = isInsideFactory ? !entrance.isEntranceToBuilding : entrance.isEntranceToBuilding;
-                if (!relevantEntrance)
-                    continue;
-
-                Vector3 teleportFrom = RoundManager.Instance.GetNavMeshPosition(entrance.entrancePoint.position, RoundManager.Instance.navHit);
-
-                if (entrance.exitPoint == null && !entrance.FindExitPoint())
-                    continue;
-
-                Vector3 teleportTo = RoundManager.Instance.GetNavMeshPosition(entrance.exitPoint!.position, RoundManager.Instance.navHit);
-
-                if (nav.CanPathToPoint(scpPos, teleportFrom) > 0 && nav.CanPathToPoint(teleportTo, position) > 0)
-                    return true;
-            }
-
-            return false;
         }
 
         public override void OnHitGround()
         {
             logger.LogDebug("OnHitGround");
+            landing = false;
+            isThrown = false;
+            nav.agent.enabled = false;
 
-            try
+            if (IsServer && isThrown && StartOfRound.Instance.shipHasLanded)
             {
-                if (IsServer && isThrown && StartOfRound.Instance.shipHasLanded)
+                heldObject = GetClosestItem(1f);
+                if (heldObject == null)
                 {
-                    heldObject = GetClosestItem(1f);
-                    if (heldObject == null) { logger.LogDebug("Cant find item to grab"); return; }
-                    GrabItemClientRpc(heldObject.NetworkObject);
+                    logger.LogDebug("Cant find item to grab");
+                    return;
                 }
-            }
-            finally
-            {
-                landing = false;
-                isThrown = false;
+                nav.agent.enabled = true;
+                GrabItemClientRpc(heldObject.NetworkObject);
+                SetDestinationToPosition(shipNode);
             }
         }
 

@@ -9,6 +9,7 @@ using System.Text;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Events;
 using UnityEngine.TextCore.Text;
 using static ES3Spreadsheet;
 using static SCP4666.Plugin;
@@ -21,7 +22,6 @@ namespace SCP4666.Doll
 
         public static HashSet<EvilFleshDollAI> Instances = [];
 
-
 #pragma warning disable CS8618
         public SmartAgentNavigator nav;
         public Animator animator;
@@ -29,7 +29,9 @@ namespace SCP4666.Doll
         public AudioSource audioSource;
 #pragma warning restore CS8618
 
-        public SCP4666AI? yulemanThrownBy;
+        public UnityEvent<EvilFleshDollAI> onDestroy = new UnityEvent<EvilFleshDollAI>();
+
+        public SCP4666AI yulemanThrownBy;
 
         public bool isBombDoll;
 
@@ -39,8 +41,10 @@ namespace SCP4666.Doll
         float timeSinceIntervalUpdate;
         private Vector3 destination;
 
-        public bool isInsideFactory;
+        public bool isOutside => nav.IsAgentOutside();
+        public bool isInsideFactory => !isOutside;
         List<EntranceTeleport> entrances = [];
+        MineshaftElevatorController? elevatorController;
 
         Vector3 targetFloorPosition;
 
@@ -52,8 +56,7 @@ namespace SCP4666.Doll
 
         bool isEnemyDead;
 
-        bool bombTicking;
-        float tickingTimer = 15f;
+        const float bombTimeToExplode = 15f;
 
         bool damagingPlayer;
 
@@ -100,6 +103,7 @@ namespace SCP4666.Doll
         public override void OnDestroy()
         {
             Instances.Remove(this);
+            onDestroy.Invoke(this);
             base.OnDestroy();
         }
 
@@ -111,7 +115,6 @@ namespace SCP4666.Doll
             entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
 
             nav.DisableMovement(true);
-            nav.SetAllValues(isOutside: yulemanThrownBy.isOutside);
 
             SCP4666AI.onPlayerGrabbed.AddListener(OnPlayerGrabbed);
 
@@ -125,22 +128,9 @@ namespace SCP4666.Doll
         {
             if (inSpecialAnimation || !IsServer || isEnemyDead || jumping) { return; }
 
-            if (bombTicking)
-            {
-                tickingTimer -= Time.deltaTime;
-
-                if (tickingTimer <= 0)
-                {
-                    bombTicking = false;
-                    Landmine.SpawnExplosion(transform.position, true);
-                    NetworkObject.Despawn(true);
-                }
-            }
-
             if (parentObject != null)
             {
                 if (targetPlayer == null) { return; }
-                isInsideFactory = targetPlayer.isInsideFactory;
                 if (targetPlayer.isPlayerDead)
                 {
                     parentObject = null;
@@ -182,22 +172,18 @@ namespace SCP4666.Doll
             nav.agent.Warp(pos);
             nav.StopAgent();
             nav.DisableMovement(false);
+            elevatorController = FindObjectOfType<MineshaftElevatorController>();
+            nav.SetAllValues(isOutside: yulemanThrownBy.isOutside);
         }
 
         public void DoAIInterval()
         {
-            /*if (SCP4666AI.Instance == null)
-            {
-                NetworkObject.Despawn(true);
-                return;
-            }*/
-
             targetPlayer = dollsTargetClosestPlayer ? GetClosestPlayer() : yulemanThrownBy?.targetPlayer;
 
-            if (targetPlayer == null || !SetDestinationToPosition(targetPlayer.transform.position))
+            if (targetPlayer == null || !SetDestinationToPosition(targetPlayer.transform.position, true))
             {
                 if (yulemanThrownBy == null) { return; }
-                if (!SetDestinationToPosition(yulemanThrownBy.transform.position))
+                if (!SetDestinationToPosition(yulemanThrownBy.transform.position, true))
                 {
                     nav.StopAgent();
                     return;
@@ -220,42 +206,14 @@ namespace SCP4666.Doll
             position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
             if (IsServer) { nav.agent.Warp(position); }
             transform.position = position;
-            isInsideFactory = _isInsideFactory;
+            nav.SetAllValues(!_isInsideFactory);
         }
 
-        public bool SetDestinationToPosition(Vector3 position)
+        public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
         {
-            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-            if (!SmartCanPathToPoint(position)) { return false; }
+            position = RoundManager.Instance.GetNavMeshPosition(position);
+            if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
             return nav.DoPathingToDestination(position);
-        }
-
-        public bool SmartCanPathToPoint(Vector3 position)
-        {
-            Vector3 scpPos = RoundManager.Instance.GetNavMeshPosition(transform.position, RoundManager.Instance.navHit);
-            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-
-            if (nav.CanPathToPoint(scpPos, position) > 0)
-                return true;
-
-            foreach (var entrance in entrances)
-            {
-                bool relevantEntrance = isInsideFactory ? !entrance.isEntranceToBuilding : entrance.isEntranceToBuilding;
-                if (!relevantEntrance)
-                    continue;
-
-                Vector3 teleportFrom = RoundManager.Instance.GetNavMeshPosition(entrance.entrancePoint.position, RoundManager.Instance.navHit);
-
-                if (entrance.exitPoint == null && !entrance.FindExitPoint())
-                    continue;
-
-                Vector3 teleportTo = RoundManager.Instance.GetNavMeshPosition(entrance.exitPoint!.position, RoundManager.Instance.navHit);
-
-                if (nav.CanPathToPoint(scpPos, teleportFrom) > 0 && nav.CanPathToPoint(teleportTo, position) > 0)
-                    return true;
-            }
-
-            return false;
         }
 
         public Vector3 GetItemFloorPosition(Vector3 startPosition)
@@ -280,7 +238,7 @@ namespace SCP4666.Doll
             foreach (var player in StartOfRound.Instance.allPlayerScripts.ToList())
             {
                 if (player == null || !player.isPlayerControlled) { continue; }
-                //if (player.isHostPlayerObject) { continue; } // TODO: For testing remove later
+                if (player.isHostPlayerObject && Utils.disableHostTargetting && Utils.isBeta) { continue; }
                 float distance = Vector3.Distance(transform.position, player.transform.position);
 
                 if (distance < closestDistance)
@@ -371,6 +329,8 @@ namespace SCP4666.Doll
             //return; // TODO: For testing, remove later
             if (!IsServer) { return; }
             if (parentObject != null || isEnemyDead || inSpecialAnimation) { return; }
+            if (player.isHostPlayerObject && Utils.disableHostTargetting && Utils.isBeta) { return; }
+
             targetPlayer = player;
             nav.DisableMovement(true);
             ResetVariables();
@@ -422,10 +382,25 @@ namespace SCP4666.Doll
             HitEnemyOnLocalClient();
         }
 
-        public void OnPlayerGrabbed(PlayerControllerB player)
+        public void OnPlayerGrabbed(PlayerControllerB player) // Listener
         {
             if (player != targetPlayer || !IsServer) { return; }
             DropDollClientRpc();
+        }
+
+        public void BombStart()
+        {
+            audioSource.Play();
+
+            IEnumerator BombTicking()
+            {
+                yield return null;
+                yield return new WaitForSeconds(bombTimeToExplode);
+                Landmine.SpawnExplosion(transform.position, true);
+                NetworkObject.Despawn(true);
+            }
+
+            StartCoroutine(BombTicking());
         }
 
         public void ResetVariables()
@@ -471,8 +446,7 @@ namespace SCP4666.Doll
             if (isBombDoll)
             {
                 animator.SetTrigger("hang");
-                audioSource.Play();
-                bombTicking = true;
+                BombStart();
             }
             else
             {

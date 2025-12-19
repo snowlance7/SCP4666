@@ -62,12 +62,15 @@ namespace SCP4666
         public Camera cameraSack;
 #pragma warning restore CS8618
 
+        public static List<EvilFleshDollAI> DollInstances = [];
+
         public static UnityEvent<PlayerControllerB> onPlayerGrabbed = new UnityEvent<PlayerControllerB>();
 
         public new bool isOutside => nav.IsAgentOutside();
 
         Vector3 mainEntranceOutsidePosition;
         List<EntranceTeleport> entrances = [];
+        MineshaftElevatorController? elevatorController;
 
         List<PlayerControllerB> targetPlayers = [];
 
@@ -167,6 +170,7 @@ namespace SCP4666
 
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(false, true);
             entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
+            elevatorController = FindObjectOfType<MineshaftElevatorController>(); 
 
             // spawn throwing knife
             thrownKnifeScript = GameObject.Instantiate(ThrowingKnifePrefab, Vector3.zero, Quaternion.identity).GetComponent<ThrownKnifeScript>();
@@ -193,7 +197,16 @@ namespace SCP4666
                 StartOfRound.Instance.allowLocalPlayerDeath = true;
                 playerInSack.KillPlayer(Vector3.zero, spawnBody: false);
             }
+
+            foreach(var doll in DollInstances)
+            {
+                if (doll == null) { continue; }
+                doll.NetworkObject.Despawn(destroy: true);
+            }
+            DollInstances.Clear();
+
             Destroy(thrownKnifeScript?.gameObject);
+
             Instances.Remove(this);
             base.OnDestroy();
         }
@@ -400,7 +413,7 @@ namespace SCP4666
                         return;
                     }
                     
-                    if (!SetDestinationToPosition(targetNode.position))
+                    if (!SetDestinationToPosition(targetNode.position, true))
                     {
                         if (isInsideFactory && !teleporting)
                         {
@@ -499,39 +512,11 @@ namespace SCP4666
             StartCoroutine(TeleportCoroutine(position, outside));
         }
 
-        public bool SetDestinationToPosition(Vector3 position)
+        public new bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
         {
             position = RoundManager.Instance.GetNavMeshPosition(position);
-            if (!SmartCanPathToPoint(position)) { return false; }
+            if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
             return nav.DoPathingToDestination(position);
-        }
-
-        public bool SmartCanPathToPoint(Vector3 position)
-        {
-            Vector3 enemyPos = RoundManager.Instance.GetNavMeshPosition(transform.position);
-            position = RoundManager.Instance.GetNavMeshPosition(position);
-
-            if (nav.CanPathToPoint(enemyPos, position) > 0)
-                return true;
-
-            foreach (var entrance in entrances)
-            {
-                bool relevantEntrance = isInsideFactory ? !entrance.isEntranceToBuilding : entrance.isEntranceToBuilding;
-                if (!relevantEntrance)
-                    continue;
-
-                Vector3 teleportFrom = RoundManager.Instance.GetNavMeshPosition(entrance.entrancePoint.position);
-
-                if (entrance.exitPoint == null && !entrance.FindExitPoint())
-                    continue;
-
-                Vector3 teleportTo = RoundManager.Instance.GetNavMeshPosition(entrance.exitPoint!.position);
-
-                if (nav.CanPathToPoint(enemyPos, teleportFrom) > 0 && nav.CanPathToPoint(teleportTo, position) > 0)
-                    return true;
-            }
-
-            return false;
         }
 
         GameObject? GetClosestNodeBehindPlayer(PlayerControllerB player, float minDistance)
@@ -767,6 +752,11 @@ namespace SCP4666
         }
 
         #endregion
+
+        public void OnDollDestroyed(EvilFleshDollAI doll)
+        {
+            DollInstances.Remove(doll);
+        }
 
         public new void SetEnemyOutside(bool outside) // Call in SmartNavAgent in unity editor TODO
         {

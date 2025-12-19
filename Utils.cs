@@ -1,9 +1,11 @@
 ﻿using Dawn;
+using Dawn.Utils;
 using GameNetcodeStuff;
 using HarmonyLib;
 using PathfindingLib.API.SmartPathfinding;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
@@ -24,6 +26,7 @@ namespace SCP4666
         public static bool inTestRoom => StartOfRound.Instance?.testRoom != null;
         public static bool disableSpawning = false;
         public static bool disableTargetting = false;
+        public static bool disableHostTargetting = false;
         public static bool DEBUG_disableMoving = false;
 
         public static bool localPlayerFrozen = false;
@@ -633,6 +636,94 @@ namespace SCP4666
                 player.voiceMuffledByEnemy = muffle;
             }
         }
+
+        public static bool SmartCanPathToPoint(SmartAgentNavigator nav, Vector3 startPos, Vector3 endPos, List<EntranceTeleport>? entrances = null, MineshaftElevatorController? elevator = null)
+        {
+            Vector3 start = RoundManager.Instance.GetNavMeshPosition(startPos);
+            Vector3 end = RoundManager.Instance.GetNavMeshPosition(endPos);
+
+            bool inside = !nav.IsAgentOutside();
+
+            bool CanPath(Vector3 a, Vector3 b)
+                => nav.CanPathToPoint(a, b) <= 0;
+
+            // 1. Direct path
+            if (CanPath(start, end))
+                return true;
+
+            if (entrances == null && elevator == null)
+                return false;
+
+            // Cache elevator points if present
+            Vector3 elevTop = Vector3.zero;
+            Vector3 elevBottom = Vector3.zero;
+            Vector3 elevInside = Vector3.zero;
+
+            if (elevator != null)
+            {
+                elevTop = RoundManager.Instance.GetNavMeshPosition(elevator.elevatorTopPoint.position);
+                elevBottom = RoundManager.Instance.GetNavMeshPosition(elevator.elevatorBottomPoint.position);
+                elevInside = elevator.elevatorInsidePoint.position;
+            }
+
+            // 2. Entrances
+            if (entrances != null)
+            {
+                foreach (var entrance in entrances)
+                {
+                    bool relevant = inside
+                        ? !entrance.isEntranceToBuilding
+                        : entrance.isEntranceToBuilding;
+
+                    if (!relevant)
+                        continue;
+
+                    if (entrance.exitPoint == null && !entrance.FindExitPoint())
+                        continue;
+
+                    Vector3 from = RoundManager.Instance.GetNavMeshPosition(entrance.entrancePoint.position);
+                    Vector3 to = RoundManager.Instance.GetNavMeshPosition(entrance.exitPoint.position);
+
+                    // start -> entrance -> exit -> end
+                    if (CanPath(start, from) && CanPath(to, end))
+                        return true;
+
+                    // Combine with elevator if present
+                    if (elevator != null)
+                    {
+                        // start -> elevator -> entrance -> exit -> end
+                        if (CanPath(start, elevBottom) &&
+                            CanPath(elevTop, from) &&
+                            CanPath(to, end))
+                            return true;
+                    }
+                }
+            }
+
+            // 3. Elevator-only paths
+            if (elevator != null)
+            {
+                bool usingElevator = inside &&
+                    Vector3.Distance(start, elevInside) < 1f;
+
+                if (usingElevator)
+                {
+                    if (CanPath(elevTop, end) || CanPath(elevBottom, end))
+                        return true;
+                }
+                else
+                {
+                    if (CanPath(start, elevBottom) && CanPath(elevTop, end))
+                        return true;
+
+                    if (inside && CanPath(start, elevTop) && CanPath(elevBottom, end))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
     }
 
     [HarmonyPatch]

@@ -30,6 +30,8 @@ namespace SCP4666
             EvilFleshDollAI doll = GameObject.Instantiate(evilDollPrefab, RightHandTransform.position, transform.rotation).GetComponent<EvilFleshDollAI>();
             doll.yulemanThrownBy = this;
             doll.NetworkObject.Spawn(destroyWithScene: true);
+            DollInstances.Add(doll);
+            doll.onDestroy.AddListener(OnDollDestroyed);
 
             if (useBombDolls)
             {
