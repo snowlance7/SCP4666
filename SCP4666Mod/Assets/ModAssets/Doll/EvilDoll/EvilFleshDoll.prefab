@@ -77,8 +77,8 @@ GameObject:
   - component: {fileID: 1392524925540289005}
   - component: {fileID: 5205935945829572971}
   - component: {fileID: 2031737904557487894}
-  - component: {fileID: 4732791040888603977}
   - component: {fileID: 5474674523921646897}
+  - component: {fileID: 7671914014307640224}
   m_Layer: 19
   m_Name: EvilFleshDoll
   m_TagString: Enemy
@@ -313,26 +313,6 @@ MonoBehaviour:
   InLocalSpace: 0
   Interpolate: 1
   SlerpPosition: 0
---- !u!114 &4732791040888603977
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 116494380623710686}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: -1245269143, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  nav: {fileID: 5474674523921646897}
-  agent: {fileID: 5205935945829572971}
-  animator: {fileID: 6175921811230102004}
-  bombMesh: {fileID: 5939435383404291414}
-  audioSource: {fileID: 3273542445226647752}
-  yulemanThrownBy: {fileID: 0}
-  isBombDoll: 0
-  isInsideFactory: 0
 --- !u!114 &5474674523921646897
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -355,6 +335,27 @@ MonoBehaviour:
   agent: {fileID: 0}
   _nodeRemovalPrecision: 5
   _allowedLinks: 15
+--- !u!114 &7671914014307640224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 116494380623710686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1245269143, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nav: {fileID: 5474674523921646897}
+  animator: {fileID: 6175921811230102004}
+  bombMesh: {fileID: 5939435383404291414}
+  audioSource: {fileID: 3273542445226647752}
+  onDestroy:
+    m_PersistentCalls:
+      m_Calls: []
+  yulemanThrownBy: {fileID: 0}
+  isBombDoll: 0
 --- !u!1 &152879420184675697
 GameObject:
   m_ObjectHideFlags: 0
@@ -2058,7 +2059,7 @@ MonoBehaviour:
   m_Script: {fileID: 200115641, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mainScript: {fileID: 4732791040888603977}
+  mainScript: {fileID: 7671914014307640224}
   timeSinceCollision: 0
 --- !u!54 &4239460685794466004
 Rigidbody:

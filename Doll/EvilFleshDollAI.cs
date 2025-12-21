@@ -16,7 +16,7 @@ using static SCP4666.Plugin;
 
 namespace SCP4666.Doll
 {
-    internal class EvilFleshDollAI : NetworkBehaviour // TODO: Need to test and fix // TODO: Test networking
+    public class EvilFleshDollAI : NetworkBehaviour // TODO: Need to test and fix // TODO: Test networking
     {
         public static int DEBUG_bodyPartIndex = 0;
 
@@ -31,7 +31,10 @@ namespace SCP4666.Doll
 
         public UnityEvent<EvilFleshDollAI> onDestroy = new UnityEvent<EvilFleshDollAI>();
 
+        [HideInInspector]
+#pragma warning disable CS8618
         public SCP4666AI yulemanThrownBy;
+#pragma warning restore CS8618
 
         public bool isBombDoll;
 
@@ -44,7 +47,7 @@ namespace SCP4666.Doll
         public bool isOutside => nav.IsAgentOutside();
         public bool isInsideFactory => !isOutside;
         List<EntranceTeleport> entrances = [];
-        MineshaftElevatorController? elevatorController;
+        //MineshaftElevatorController? elevatorController;
 
         Vector3 targetFloorPosition;
 
@@ -172,7 +175,7 @@ namespace SCP4666.Doll
             nav.agent.Warp(pos);
             nav.StopAgent();
             nav.DisableMovement(false);
-            elevatorController = FindObjectOfType<MineshaftElevatorController>();
+            //elevatorController = FindObjectOfType<MineshaftElevatorController>();
             nav.SetAllValues(isOutside: yulemanThrownBy.isOutside);
         }
 
@@ -212,7 +215,7 @@ namespace SCP4666.Doll
         public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
         {
             position = RoundManager.Instance.GetNavMeshPosition(position);
-            if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
+            //if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
             return nav.DoPathingToDestination(position);
         }
 
@@ -238,7 +241,7 @@ namespace SCP4666.Doll
             foreach (var player in StartOfRound.Instance.allPlayerScripts.ToList())
             {
                 if (player == null || !player.isPlayerControlled) { continue; }
-                if (player.isHostPlayerObject && Utils.disableHostTargetting && Utils.isBeta) { continue; }
+                if (player.isHostPlayerObject && Utils.DEBUG_disableHostTargetting && Utils.isBeta) { continue; }
                 float distance = Vector3.Distance(transform.position, player.transform.position);
 
                 if (distance < closestDistance)
@@ -329,7 +332,7 @@ namespace SCP4666.Doll
             //return; // TODO: For testing, remove later
             if (!IsServer) { return; }
             if (parentObject != null || isEnemyDead || inSpecialAnimation) { return; }
-            if (player.isHostPlayerObject && Utils.disableHostTargetting && Utils.isBeta) { return; }
+            if (player.isHostPlayerObject && Utils.DEBUG_disableHostTargetting && Utils.isBeta) { return; }
 
             targetPlayer = player;
             nav.DisableMovement(true);

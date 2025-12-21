@@ -1,12 +1,15 @@
 ﻿using BepInEx.Logging;
 using Dawn.Utils;
+using GameNetcodeStuff;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UIElements;
 using static SCP4666.Plugin;
+using static UnityEngine.VFX.VisualEffectControlTrackController;
 
 namespace SCP4666
 {
@@ -14,7 +17,7 @@ namespace SCP4666
     {
 #pragma warning disable CS8618
         public SmartAgentNavigator nav;
-        public Transform HoldItemPosition;
+        public Transform holdItemPosition;
         public Collider collider;
         public Animator itemAnimator;
 
@@ -35,25 +38,36 @@ namespace SCP4666
         bool isThrown;
         bool landing;
 
-        bool canMove => !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
+        //bool canMove => !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
 
-        bool isInsideFactory;
+        bool isOutside => nav.IsAgentOutside();
+        bool isInsideFactory => !isOutside;
         List<EntranceTeleport> entrances = [];
 
         Ray grenadeThrowRay;
         RaycastHit grenadeHit;
         const int stunGrenadeMask = 268437761;
 
-        Vector3 shipNode => StartOfRound.Instance.insideShipPositions[5].position;
+        Vector3 shipNode;
 
-        // Configs
-        const bool canBeGrabbedWhenHoldingScrap = true;
+        PlayerControllerB? previousPlayerHeldBy;
+
+        int hashSpeed;
+        int hashCarrying;
+        int hashSit;
+
+        float currentSpeed;
+        Vector3 lastPosition;
 
         public override void Start()
         {
             base.Start();
-
             Instances.Add(this);
+            //nav.DisableMovement(true);
+
+            hashSpeed = Animator.StringToHash("speed");
+            hashCarrying = Animator.StringToHash("carrying");
+            hashSit = Animator.StringToHash("sit");
         }
 
         public override void OnDestroy()
@@ -66,27 +80,23 @@ namespace SCP4666
         {
             if (heldObject != null && heldObject.playerHeldBy != null && IsServer) // TODO: Need to handle player grabbing item back from doll, test this
             {
+                nav.StopAgent();
                 DropItemClientRpc(transform.position);
-                return;
             }
             if (playerHeldBy != null)
             {
-                nav.agent.enabled = false;
-                nav.SetAllValues(playerHeldBy.isInsideFactory);
-                //isInsideFactory = playerHeldBy.isInsideFactory;
-            }
-            if (isHeldByEnemy)
-            {
-                nav.agent.enabled = false;
+                previousPlayerHeldBy = playerHeldBy;
+                nav.SetAllValues(!playerHeldBy.isInsideFactory);
             }
             /*if (StartOfRound.Instance.currentLevel.spawnEnemiesAndScrap)
             {
-                //canMove = !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
+                //agent.enabled = !isHeld && !isHeldByEnemy && reachedFloorTarget && fallTime >= 1f;
+                //nav.DisableMovement(!canMove);
                 if (fallTime >= 1f && !reachedFloorTarget)
                 {
                     targetFloorPosition = base.transform.position;
                     destination = base.transform.position;
-                    nav.agent.enabled = true;
+                    //nav.DisableMovement(false);
                 }
             }*/
             if (isHeld || isHeldByEnemy || !reachedFloorTarget || fallTime < 1f || isInElevator)
@@ -106,15 +116,25 @@ namespace SCP4666
 
         public void DoAIInterval()
         {
-            if (heldObject != null)
-            {
-                //nav.DisableMovement(!SetDestinationToPosition(shipNode));
+            nav.agent.enabled = heldObject != null;
+            if (heldObject == null) { return; }
 
-                if (Vector3.Distance(transform.position, shipNode) < 1f)
-                {
-                    DropItemClientRpc(transform.position);
-                }
+            if (Vector3.Distance(transform.position, shipNode) < 1f)
+            {
+                nav.StopAgent();
+                DropItemClientRpc(transform.position);
+                return;
             }
+
+            nav.DoPathingToDestination(shipNode);
+        }
+
+        public void RepositionAgent()
+        {
+            Vector3 pos = RoundManager.Instance.GetNavMeshPosition(transform.position, RoundManager.Instance.navHit);
+            nav.agent.Warp(pos);
+            if (previousPlayerHeldBy == null) return;
+            nav.SetAllValues(!previousPlayerHeldBy.isInsideFactory);
         }
 
         public override void LateUpdate()
@@ -134,7 +154,7 @@ namespace SCP4666
             }
             if (heldObject != null)
             {
-                heldObject.transform.position = HoldItemPosition.position;
+                heldObject.transform.position = holdItemPosition.position;
             }
             if (isThrown && fallTime > 0.75 && !landing)
             {
@@ -142,11 +162,18 @@ namespace SCP4666
                 itemAnimator.SetTrigger("land");
             }
 
-            itemAnimator.SetBool("sit", isHeldByEnemy);
+            currentSpeed = (transform.position - lastPosition).magnitude / Time.deltaTime;
+            lastPosition = transform.position;
+            itemAnimator.SetFloat(hashSpeed, currentSpeed);
+
+            itemAnimator.SetBool(hashSit, isHeldByEnemy);
+            itemAnimator.SetBool(hashCarrying, heldObject != null);
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true) // Synced
         {
+            nav.SetAllValues(!playerHeldBy.isInsideFactory);
+
             if (IsOwner)
             {
                 playerHeldBy.DiscardHeldObject(placeObject: true, null, GetGrenadeThrowDestination());
@@ -159,10 +186,8 @@ namespace SCP4666
         public Vector3 GetGrenadeThrowDestination()
         {
             Vector3 position = base.transform.position;
-            Debug.DrawRay(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward, Color.yellow, 15f);
             grenadeThrowRay = new Ray(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward);
             position = ((!Physics.Raycast(grenadeThrowRay, out grenadeHit, 12f, stunGrenadeMask, QueryTriggerInteraction.Ignore)) ? grenadeThrowRay.GetPoint(10f) : grenadeThrowRay.GetPoint(grenadeHit.distance - 0.05f));
-            Debug.DrawRay(position, Vector3.down, Color.blue, 15f);
             grenadeThrowRay = new Ray(position, Vector3.down);
             if (Physics.Raycast(grenadeThrowRay, out grenadeHit, 30f, stunGrenadeMask, QueryTriggerInteraction.Ignore))
             {
@@ -187,31 +212,23 @@ namespace SCP4666
             fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
         }
 
-        public bool SetDestinationToPosition(Vector3 position)
-        {
-            position = RoundManager.Instance.GetNavMeshPosition(position);
-            return nav.DoPathingToDestination(position);
-        }
-
         public override void OnHitGround()
         {
             logger.LogDebug("OnHitGround");
-            landing = false;
-            isThrown = false;
-            nav.agent.enabled = false;
 
             if (IsServer && isThrown && StartOfRound.Instance.shipHasLanded)
             {
                 heldObject = GetClosestItem(1f);
-                if (heldObject == null)
+                if (heldObject != null)
                 {
-                    logger.LogDebug("Cant find item to grab");
-                    return;
+                    shipNode = RoundManager.Instance.GetNavMeshPosition(StartOfRound.Instance.insideShipPositions[5].position, RoundManager.Instance.navHit);
+                    //nav.DisableMovement(false);
+                    GrabItemClientRpc(heldObject.NetworkObject);
                 }
-                nav.agent.enabled = true;
-                GrabItemClientRpc(heldObject.NetworkObject);
-                SetDestinationToPosition(shipNode);
             }
+
+            landing = false;
+            isThrown = false;
         }
 
         GrabbableObject? GetClosestItem(float maxDistance)
@@ -222,7 +239,7 @@ namespace SCP4666
             foreach (GrabbableObject item in GameObject.FindObjectsOfType<GrabbableObject>())
             {
                 if (item == null || item == this || !item.grabbable || !item.grabbableToEnemies || isHeld || isHeldByEnemy) { continue; }
-                logger.LogDebug(item.name);
+                //logger.LogDebug(item.name);
                 float distance = Vector3.Distance(transform.position, item.transform.position);
 
                 if (distance < closestDistance)
@@ -235,7 +252,7 @@ namespace SCP4666
             {
                 foreach (GrabbableObject item in Instances)
                 {
-                    logger.LogDebug(item.name);
+                    //logger.LogDebug(item.name);
                     if (item == null || item == this) { continue; }
                     float distance = Vector3.Distance(transform.position, item.transform.position);
 
@@ -250,14 +267,15 @@ namespace SCP4666
             return closestItem;
         }
 
-        public override void GrabItemFromEnemy(EnemyAI enemy)
+        /*public override void GrabItemFromEnemy(EnemyAI enemy)
         {
             base.GrabItemFromEnemy(enemy);
             if (heldObject != null && IsServer)
             {
+                nav.StopAgent();
                 DropItemClientRpc(transform.position);
             }
-        }
+        }*/
 
         [ServerRpc(RequireOwnership = false)]
         public void DoAnimationServerRpc(string animationName)
@@ -275,48 +293,47 @@ namespace SCP4666
         [ClientRpc]
         public void GrabItemClientRpc(NetworkObjectReference netRef)
         {
+            if (heldObject != null) return;
             if (!netRef.TryGet(out NetworkObject netObj)) { logger.LogError("Couldnt get netObj from NetworkObjectReference in GrabItemClientRpc"); return; }
             if (!netObj.TryGetComponent(out GrabbableObject grabObj)) { logger.LogError("Couldnt get GrabbableObject from NetworkObject in GrabItemClientRpc"); return; }
 
             heldObject = grabObj;
-            heldObject.parentObject = HoldItemPosition;
+            heldObject.parentObject = holdItemPosition;
             heldObject.hasHitGround = false;
-            //heldObject.GrabItemFromEnemy(null);
             heldObject.isHeldByEnemy = true;
-            heldObject.EnablePhysics(false);
+            //heldObject.EnablePhysics(false);
             HoarderBugAI.grabbableObjectsInMap.Remove(heldObject.gameObject);
-            //HoarderBugAI.grabbableObjectsInMap.Remove(gameObject);
+            HoarderBugAI.grabbableObjectsInMap.Remove(gameObject);
             grabbable = false;
+            heldObject.grabbable = true;
             grabbableToEnemies = false;
+            heldObject.grabbableToEnemies = false;
             collider.enabled = false;
-            itemAnimator.SetTrigger("carry");
         }
 
         [ClientRpc]
         public void DropItemClientRpc(Vector3 targetFloorPosition)
         {
-            if (heldObject == null)
-            {
-                return;
-            }
-            GrabbableObject itemGrabbableObject = heldObject;
-            itemGrabbableObject.parentObject = null;
-            itemGrabbableObject.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
-            itemGrabbableObject.EnablePhysics(enable: true);
-            itemGrabbableObject.fallTime = 0f;
-            itemGrabbableObject.startFallingPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(itemGrabbableObject.transform.position);
-            itemGrabbableObject.targetFloorPosition = itemGrabbableObject.transform.parent.InverseTransformPoint(targetFloorPosition);
-            itemGrabbableObject.floorYRot = -1;
-            itemGrabbableObject.DiscardItemFromEnemy();
-            itemGrabbableObject.isHeldByEnemy = false;
-            HoarderBugAI.grabbableObjectsInMap.Add(itemGrabbableObject.gameObject);
-            //HoarderBugAI.grabbableObjectsInMap.Add(gameObject);
+            if (heldObject == null) return;
+            GrabbableObject item = heldObject;
+            item.parentObject = null;
+            item.transform.SetParent(StartOfRound.Instance.propsContainer, worldPositionStays: true);
+            //item.EnablePhysics(enable: true);
+            item.fallTime = 0f;
+            item.startFallingPosition = item.transform.parent.InverseTransformPoint(item.transform.position);
+            item.targetFloorPosition = item.transform.parent.InverseTransformPoint(targetFloorPosition);
+            item.floorYRot = -1;
+            item.DiscardItemFromEnemy();
+            item.isHeldByEnemy = false;
+            item.grabbable = true;
+            item.grabbableToEnemies = true;
+            HoarderBugAI.grabbableObjectsInMap.Add(item.gameObject);
+            HoarderBugAI.grabbableObjectsInMap.Add(gameObject);
 
             heldObject = null;
             grabbable = true;
             grabbableToEnemies = true;
             collider.enabled = true;
-            itemAnimator.SetTrigger("idle"); // TODO: Maybe switch this out to him falling down toys story style?
         }
     }
 }

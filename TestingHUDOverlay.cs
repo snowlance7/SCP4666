@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace SCP4666
 {
-    internal class TestingHUDOverlay : MonoBehaviour
+    public class TestingHUDOverlay : MonoBehaviour
     {
         public static TestingHUDOverlay? Instance;
 

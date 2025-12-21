@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SCP4666.Doll
 {
-    internal class EvilFleshDollCollisionDetect : MonoBehaviour, IHittable
+    public class EvilFleshDollCollisionDetect : MonoBehaviour, IHittable
     {
 #pragma warning disable CS8618
         public EvilFleshDollAI mainScript;

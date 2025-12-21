@@ -11,7 +11,7 @@ using static UnityEngine.Rendering.DebugUI;
 
 namespace SCP4666.YulemanKnife
 {
-    internal class YulemanKnifeBehavior : PhysicsProp
+    public class YulemanKnifeBehavior : PhysicsProp
     {
 #pragma warning disable CS8618
         public AudioSource KnifeAudio;

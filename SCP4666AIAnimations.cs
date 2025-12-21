@@ -11,7 +11,7 @@ using static SCP4666.Utils;
 
 namespace SCP4666
 {
-    internal partial class SCP4666AI
+    public partial class SCP4666AI : EnemyAI
     {
         public void SpawnDoll() // Animation
         {

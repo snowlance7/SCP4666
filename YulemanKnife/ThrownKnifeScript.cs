@@ -6,7 +6,7 @@ using static SCP4666.Plugin;
 
 namespace SCP4666.YulemanKnife
 {
-    internal class ThrownKnifeScript : MonoBehaviour
+    public class ThrownKnifeScript : MonoBehaviour
     {
 #pragma warning disable CS8618
         public AudioSource KnifeAudio;

@@ -16,15 +16,16 @@ using static SCP4666.Utils;
 
 namespace SCP4666
 {
-    internal partial class SCP4666AI : EnemyAI // TODO: Rework and add new stuff
+    public partial class SCP4666AI : EnemyAI // TODO: Rework and add new stuff
     {
         // DEBUG STUFF
 
-        bool DEBUG_SpawnDolls = true;
-        bool DEBUG_GroundSlam = true;
-        bool DEBUG_ThrowKnife = true;
-        bool DEBUG_Teleport = true;
-        bool DEBUG_TargetHost = true;
+        bool DEBUG_allowSpawnDolls = true;
+        bool DEBUG_allowGroundSlam = true;
+        bool DEBUG_allowThrowKnife = true;
+        bool DEBUG_allowTeleporting = true;
+        bool DEBUG_allowTargettingHost = true;
+        bool DEBUG_allowAbducting = true;
 
         //public static SCP4666AI? Instance { get; private set; }
         public static List<SCP4666AI> Instances { get; private set; } = [];
@@ -70,7 +71,7 @@ namespace SCP4666
 
         Vector3 mainEntranceOutsidePosition;
         List<EntranceTeleport> entrances = [];
-        MineshaftElevatorController? elevatorController;
+        //MineshaftElevatorController? elevatorController;
 
         List<PlayerControllerB> targetPlayers = [];
 
@@ -105,6 +106,7 @@ namespace SCP4666
 
         public bool isInsideFactory => !isOutside;
 
+        #region Constants
         // Constants
         readonly Vector3 insideScale = new Vector3(1.5f, 1.5f, 1.5f);
         readonly Vector3 outsideScale = new Vector3(2f, 2f, 2f);
@@ -142,6 +144,9 @@ namespace SCP4666
 
         const float damagePlayerCooldown = 2f;
 
+        const int playerKidnapChanceOffset = 100;
+        #endregion
+
         public enum State
         {
             Spawning,
@@ -170,7 +175,7 @@ namespace SCP4666
 
             mainEntranceOutsidePosition = RoundManager.FindMainEntrancePosition(false, true);
             entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
-            elevatorController = FindObjectOfType<MineshaftElevatorController>(); 
+            //elevatorController = FindObjectOfType<MineshaftElevatorController>(); 
 
             // spawn throwing knife
             thrownKnifeScript = GameObject.Instantiate(ThrowingKnifePrefab, Vector3.zero, Quaternion.identity).GetComponent<ThrownKnifeScript>();
@@ -310,6 +315,7 @@ namespace SCP4666
             }
 
             currentSpeed = ((transform.position - lastPosition).magnitude / Time.deltaTime) / 2;
+            lastPosition = transform.position;
             idleTime = currentSpeed <= 0f ? idleTime + Time.deltaTime : 0f;
         }
 
@@ -341,7 +347,7 @@ namespace SCP4666
                     // TODO: Set up configs for disabling certain attacks/mechanics
                     // Teleport on cooldown
                     if (CanDoSpecialAction() && timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance
-                        && (!Utils.isBeta || DEBUG_Teleport))
+                        && (!Utils.isBeta || DEBUG_allowTeleporting))
                     {
                         GameObject? teleportNode = GetClosestNodeBehindPlayer(targetPlayer, 1f);
                         if (teleportNode != null)
@@ -353,7 +359,7 @@ namespace SCP4666
 
                     // Spawn dolls on cooldown
                     if (CanDoSpecialAction() && timeSinceDollSpawning > dollSpawningCooldown
-                        && (!Utils.isBeta || DEBUG_SpawnDolls))
+                        && (!Utils.isBeta || DEBUG_allowSpawnDolls))
                     {
                         logger.LogDebug("Spawning dolls");
                         timeSinceDollSpawning = 0f;
@@ -374,7 +380,7 @@ namespace SCP4666
 
                     // Throw knife on cooldown
                     if (CanDoSpecialAction() && timeSinceKnifeThrown > knifeThrowCooldown
-                        && (!Utils.isBeta || DEBUG_ThrowKnife))
+                        && (!Utils.isBeta || DEBUG_allowThrowKnife))
                     {
                         //logger.LogDebug("Begin throwing knife");
                         float distance = Vector3.Distance(transform.position, targetPlayer.transform.position);
@@ -441,7 +447,7 @@ namespace SCP4666
 
         public void SpectateYuleman(bool value)
         {
-            cameraSack.enabled = value;
+            cameraSack.gameObject.SetActive(value);
             StartOfRound.Instance.SwitchCamera(value ? cameraSack : localPlayer.gameplayCamera);
             logger.LogDebug("Spectate Yuleman: " + value);
         }
@@ -452,7 +458,7 @@ namespace SCP4666
             if (!CanDoSpecialAction()) { return false; }
             if (isPlayerInSack) { return false; }
             if (IsPlayerChild(player)) { return true; }
-            if (UnityEngine.Random.Range(0, enemyHP) == 0) { return true; }
+            if (UnityEngine.Random.Range(0, enemyHP + playerKidnapChanceOffset) == 0) { return true; }
             return false;
         }
 
@@ -514,8 +520,8 @@ namespace SCP4666
 
         public new bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
         {
-            position = RoundManager.Instance.GetNavMeshPosition(position);
-            if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
+            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
+            //if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
             return nav.DoPathingToDestination(position);
         }
 
@@ -566,7 +572,7 @@ namespace SCP4666
             targetPlayer = null;
             foreach (PlayerControllerB player in targetPlayers.ToList())
             {
-                if (Utils.isBeta && !DEBUG_TargetHost && player.isHostPlayerObject) { continue; }
+                if (Utils.isBeta && !DEBUG_allowTargettingHost && player.isHostPlayerObject) { continue; }
                 if (PlayerIsTargetable(player))
                 {
                     tempDist = Vector3.Distance(base.transform.position, player.transform.position);
@@ -672,7 +678,7 @@ namespace SCP4666
             }
 
             if (damageTakenWithoutDamaging >= maxDamageTakenToGroundSlam && timeSinceGroundSlam > groundSlamCooldown
-                && (!Utils.isBeta || DEBUG_GroundSlam))
+                && (!Utils.isBeta || DEBUG_allowGroundSlam))
             {
                 logger.LogDebug("Performing ground slam");
                 damageTakenWithoutDamaging = 0;
@@ -694,7 +700,7 @@ namespace SCP4666
 
             timeSinceDamagePlayer = 0f;
 
-            if (CanKidnapPlayer(player))
+            if (CanKidnapPlayer(player) && (!Utils.isBeta || DEBUG_allowAbducting))
             {
                 timeSinceGrabPlayer = 0f;
                 inSpecialAnimation = true;

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SCP4666.Doll
 {
-    internal class SCP4666AttackAreaCollisionDetect : MonoBehaviour
+    public class SCP4666AttackAreaCollisionDetect : MonoBehaviour
     {
 #pragma warning disable CS8618
         public SCP4666AI mainScript;
