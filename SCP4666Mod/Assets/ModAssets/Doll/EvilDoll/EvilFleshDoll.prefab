@@ -347,7 +347,7 @@ MonoBehaviour:
   m_Script: {fileID: -1245269143, guid: 59ce97803f816fe429dc55f4c15b7d72, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nav: {fileID: 5474674523921646897}
+  agent: {fileID: 5205935945829572971}
   animator: {fileID: 6175921811230102004}
   bombMesh: {fileID: 5939435383404291414}
   audioSource: {fileID: 3273542445226647752}

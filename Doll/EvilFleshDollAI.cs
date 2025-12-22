@@ -23,7 +23,7 @@ namespace SCP4666.Doll
         public static HashSet<EvilFleshDollAI> Instances = [];
 
 #pragma warning disable CS8618
-        public SmartAgentNavigator nav;
+        public NavMeshAgent agent;
         public Animator animator;
         public GameObject bombMesh;
         public AudioSource audioSource;
@@ -42,12 +42,11 @@ namespace SCP4666.Doll
 
         const float AIIntervalTime = 0.2f;
         float timeSinceIntervalUpdate;
-        private Vector3 destination;
 
-        public bool isOutside => nav.IsAgentOutside();
-        public bool isInsideFactory => !isOutside;
-        List<EntranceTeleport> entrances = [];
-        //MineshaftElevatorController? elevatorController;
+        NavMeshPath path1;
+        Vector3 destination;
+        bool reachedDestination => Vector3.Distance(transform.position, destination) < 1f;
+        bool moveTowardsDestination;
 
         Vector3 targetFloorPosition;
 
@@ -115,9 +114,7 @@ namespace SCP4666.Doll
             StartOfRound.Instance.LocalPlayerDamagedEvent.AddListener(LocalPlayerDamaged);
             Instances.Add(this);
 
-            entrances = GameObject.FindObjectsOfType<EntranceTeleport>(includeInactive: false).ToList();
-
-            nav.DisableMovement(true);
+            inSpecialAnimation = true;
 
             SCP4666AI.onPlayerGrabbed.AddListener(OnPlayerGrabbed);
 
@@ -129,7 +126,11 @@ namespace SCP4666.Doll
 
         public void Update()
         {
-            if (inSpecialAnimation || !IsServer || isEnemyDead || jumping) { return; }
+            if (!IsServer || isEnemyDead || jumping) { return; }
+            if (inSpecialAnimation)
+            {
+                StopMovement();
+            }
 
             if (parentObject != null)
             {
@@ -170,25 +171,26 @@ namespace SCP4666.Doll
             logger.LogDebug("OnHitGround");
             ResetVariables();
 
-            nav.agent.enabled = true;
+            agent.enabled = true;
             Vector3 pos = RoundManager.Instance.GetNavMeshPosition(transform.position);
-            nav.agent.Warp(pos);
-            nav.StopAgent();
-            nav.DisableMovement(false);
-            //elevatorController = FindObjectOfType<MineshaftElevatorController>();
-            nav.SetAllValues(isOutside: yulemanThrownBy.isOutside);
+            agent.Warp(pos);
+            StopMovement();
         }
 
         public void DoAIInterval()
         {
+            if (moveTowardsDestination)
+            {
+                agent.SetDestination(destination);
+            }
+
             targetPlayer = dollsTargetClosestPlayer ? GetClosestPlayer() : yulemanThrownBy?.targetPlayer;
 
             if (targetPlayer == null || !SetDestinationToPosition(targetPlayer.transform.position, true))
             {
-                if (yulemanThrownBy == null) { return; }
-                if (!SetDestinationToPosition(yulemanThrownBy.transform.position, true))
+                if (yulemanThrownBy == null || !SetDestinationToPosition(yulemanThrownBy.transform.position, true))
                 {
-                    nav.StopAgent();
+                    StopMovement();
                     return;
                 }
             }
@@ -197,26 +199,48 @@ namespace SCP4666.Doll
                 if (Vector3.Distance(transform.position, targetPlayer.transform.position) <= distanceToJumpAtPlayer)
                 {
                     logger.LogDebug("Attempt jump at player");
-                    nav.DisableMovement(true);
+                    StopMovement();
                     inSpecialAnimation = true;
                     LungeClientRpc(targetPlayer.actualClientId);
                 }
             }
         }
 
-        public void Teleport(Vector3 position, bool _isInsideFactory)
+        public void StopMovement()
         {
+            if (agent.enabled && agent.isOnNavMesh)
+            {
+                agent.ResetPath();
+            }
+            agent.velocity = Vector3.zero;
+            moveTowardsDestination = false;
+        }
+
+        public void Teleport(Vector3 position)
+        {
+            if (!IsServer) { return; }
             position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-            if (IsServer) { nav.agent.Warp(position); }
-            transform.position = position;
-            nav.SetAllValues(!_isInsideFactory);
+            agent.Warp(position);
         }
 
         public bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
         {
-            position = RoundManager.Instance.GetNavMeshPosition(position);
-            //if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
-            return nav.DoPathingToDestination(position);
+            if (checkForPath)
+            {
+                position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 1.75f);
+                path1 = new NavMeshPath();
+                if (!agent.CalculatePath(position, path1))
+                {
+                    return false;
+                }
+                if (Vector3.Distance(path1.corners[path1.corners.Length - 1], RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, 2.7f)) > 1.55f)
+                {
+                    return false;
+                }
+            }
+            moveTowardsDestination = true;
+            destination = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit, -1f);
+            return true;
         }
 
         public Vector3 GetItemFloorPosition(Vector3 startPosition)
@@ -335,8 +359,9 @@ namespace SCP4666.Doll
             if (player.isHostPlayerObject && Utils.DEBUG_disableHostTargetting && Utils.isBeta) { return; }
 
             targetPlayer = player;
-            nav.DisableMovement(true);
+            StopMovement();
             ResetVariables();
+            inSpecialAnimation = true;
 
             bodyPartIndex = Utils.testing && Utils.isBeta ? DEBUG_bodyPartIndex : UnityEngine.Random.Range(0, 11);
             parentObject = targetPlayer.bodyParts[bodyPartIndex];
@@ -350,7 +375,7 @@ namespace SCP4666.Doll
         {
             //if (!IsServer) { return; }
 
-            if (targetPlayer == null || targetPlayer.isInsideFactory != isInsideFactory)
+            if (targetPlayer == null)
             {
                 animator.SetTrigger("reset");
                 inSpecialAnimation = false;
@@ -366,7 +391,7 @@ namespace SCP4666.Doll
         {
             if (targetPlayer == null) { return; }
             damagingPlayer = true;
-            targetPlayer!.DamagePlayer(biteDamage, false);
+            targetPlayer?.DamagePlayer(biteDamage, false);
             damagingPlayer = false;
             logger.LogDebug("Player bitten by doll");
         } // TODO: Test this on network
@@ -426,7 +451,7 @@ namespace SCP4666.Doll
         {
             if (!IsServer) { return; }
 
-            nav.DisableMovement(true);
+            StopMovement();
             KillDollClientRpc();
         }
 
@@ -472,7 +497,7 @@ namespace SCP4666.Doll
             ResetVariables();
             isEnemyDead = true;
             targetPlayer = null;
-            Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
+            Teleport(GetItemFloorPosition(transform.position));
         }
 
         [ClientRpc]
@@ -482,7 +507,7 @@ namespace SCP4666.Doll
             parentObject = null;
             ResetVariables();
             targetPlayer = null;
-            Teleport(GetItemFloorPosition(transform.position), isInsideFactory);
+            Teleport(GetItemFloorPosition(transform.position));
         }
     }
 }

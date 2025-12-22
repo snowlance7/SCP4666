@@ -394,7 +394,7 @@ namespace SCP4666
                         }
                     }
 
-                    if (targetPlayer == null || inTestRoom) { return; }
+                    if (targetPlayer == null) { return; }
                     SetDestinationToPosition(targetPlayer.transform.position);
 
                     break;
@@ -419,7 +419,7 @@ namespace SCP4666
                         return;
                     }
                     
-                    if (!SetDestinationToPosition(targetNode.position, true))
+                    /*if (!SetDestinationToPosition(targetNode.position, true))
                     {
                         if (isInsideFactory && !teleporting)
                         {
@@ -427,9 +427,9 @@ namespace SCP4666
                             return;
                         }
                         return;
-                    }
+                    }*/
 
-                    if (idleTime > 2f && isOutside)
+                    if (idleTime > 2f/* && isOutside*/)
                     {
                         GameObject? teleportNode = outsideAINodes.GetClosestToPosition(transform.position, x => x.transform.position);
                         if (teleportNode == null) { return; }
@@ -516,13 +516,6 @@ namespace SCP4666
             }
 
             StartCoroutine(TeleportCoroutine(position, outside));
-        }
-
-        public new bool SetDestinationToPosition(Vector3 position, bool checkForPath = false)
-        {
-            position = RoundManager.Instance.GetNavMeshPosition(position, RoundManager.Instance.navHit);
-            //if (checkForPath && !Utils.SmartCanPathToPoint(nav, transform.position, position, entrances, elevatorController)) { return false; }
-            return nav.DoPathingToDestination(position);
         }
 
         GameObject? GetClosestNodeBehindPlayer(PlayerControllerB player, float minDistance)
@@ -790,6 +783,7 @@ namespace SCP4666
                 case (int)State.Abducting:
                     if (!IsServer) { return; }
                     targetNode = Utils.outsideAINodes.GetFarthestFromPosition(mainEntranceOutsidePosition, x => x.transform.position)?.transform;
+                    nav.DoPathingToDestination(targetNode.position);
                     creatureAnimator.SetBool("bagWalk", true);
                     break;
                 default:
