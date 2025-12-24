@@ -7,6 +7,8 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Diagnostics;
 using static SCP4666.Plugin;
+using Dusk;
+using System.Collections.Generic;
 
 /* bodyparts
  * 0 head
@@ -33,11 +35,10 @@ namespace SCP4666
         {
             if (!Utils.isBeta) { return; }
             if (!Utils.testing) { return; }
-            SCP4666AI scp = SCP4666AI.Instances[0];
-            cameraEnabled = !cameraEnabled;
-            scp.cameraSack.enabled = cameraEnabled;
-            StartOfRound.Instance.SwitchCamera(cameraEnabled ? SCP4666AI.Instances[0].cameraSack : localPlayer.gameplayCamera);
-            logger.LogDebug("Camera enabled: " + cameraEnabled);
+            foreach (var entry in SCP4666ContentHandler.Instance.SCP4666.ConfigEntries)
+            {
+                logger.LogDebug($"{entry.Key}:{entry.Value.Definition.Key}-{entry.Value.Definition.Section}");
+            }
         }
 
         [HarmonyPrefix, HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SubmitChat_performed))]

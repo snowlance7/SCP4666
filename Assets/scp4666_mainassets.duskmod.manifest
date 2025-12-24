@@ -1,0 +1,33 @@
+ManifestFileVersion: 0
+CRC: 2745643342
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 099c429b6143b2e0edf2ff75671d17b3
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 4c89992ae841a0843ba3793bae89666e
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: 099c429b6143b2e0edf2ff75671d17b3
+HashAppended: 0
+ClassTypes:
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 49
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: -1097792660, guid: 41d6645f64e86c743812eb594070972f, type: 3}
+- Class: 114
+  Script: {fileID: -303672662, guid: 41d6645f64e86c743812eb594070972f, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 213
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers:
+- AssemblyName: com.github.teamxiaolan.dawnlib.dusk
+  ClassName: Dusk.AssetBundleData
+Assets:
+- Assets/ModAssets/SCP4666ModInformation.asset
+- Assets/ModAssets/SCP4666Container.asset
+Dependencies: []

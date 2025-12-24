@@ -17,7 +17,7 @@ namespace SCP4666
 {
     public static class Utils
     {
-        public static bool isBeta = true;
+        public static bool isBeta = false;
         public static bool testing => _testing && isBeta;
         public static bool _testing = false;
 

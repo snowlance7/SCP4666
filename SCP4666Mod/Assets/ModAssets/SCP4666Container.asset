@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   assetBundles:
   - assetBundleName: scp4666_assets
-    configName: DawnConfigs
+    configName: SCP4666

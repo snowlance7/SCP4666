@@ -188,7 +188,7 @@ namespace SCP4666
 
             if (localPlayer == inSpecialAnimationWithPlayer)
             {
-                //NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(true); // TODO: Temp, trying something new
+                //NetworkHandlerSCP4666.Instance.blackScreenOverlay.SetActive(true);
                 SpectateYuleman(true);
                 StartOfRound.Instance.allowLocalPlayerDeath = false;
             }

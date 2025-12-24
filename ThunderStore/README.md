@@ -1,9 +1,5 @@
 # SCP-4666 Mod
 
-## Trailer
-
-[![SCP-4666 Mod Trailer](https://img.youtube.com/vi/k828Qmv3tkI/maxresdefault.jpg)](https://www.youtube.com/watch?v=k828Qmv3tkI)
-
 ## SCP File
 
 **Item #:** SCP-4666
@@ -59,11 +55,17 @@ DNA testing revealed the subject had been Ekaterina Morozova, age 7, a known abd
 
 - SCP-4666 will spawn as an outside enemy with some presents a knife and a sack with unknown contents.
 - Anyone who sees SCP-4666 will be considered a witness and he will stop at nothing to make sure they are dealt with.
-- If a player has a size lower than the default size, they will be considered a child. If colliding with a child, SCP-4666 will attempt to abduct them and walk towards the edge of the map before despawning and killing the player.
-- SCP-4666 can periodically teleport and throw his knife.
-- If SCP-4666 is killed, he will drop his knife and his sack.
+- If a player has a size lower than the default size, they will be considered a child. If colliding with a child, SCP-4666 will attempt to abduct them and walk towards the edge of the map before despawning and killing the player. There is also a small chance he will abduct you regardless of size.
+- SCP-4666 can periodically teleport behind you if you are out of range.
+- He can throw his knife at you as well as use many different attacks to kill you.
+- If SCP-4666 is killed, he will drop his knife, his "toy" sack, and a few dolls.
 - The knife is throwable and does 1 shovel hit of damage to monsters.
-- The sack is a special item which, when placed in the ship, can revive all players on a team wipe, however, they will be revived as children.
+- The sack is a special item which, when used, has a 50/50 chance for each player to revive them, or spawn a gift
+- The dolls can carry scrap to the ship for you!
+
+## Upcoming Changes
+- DawnLib Achievements?
+- More attacks/behavior?
 
 ## About Project SCP
 
@@ -88,6 +90,7 @@ For issues and suggestions visit the [github](https://github.com/snowlance7/SCP4
 
 - JoeJoe: Project owner, designer and executive
 - Snowy: Programmer and designer
-- Shrki: Animation (shrki_ on discord)
-- Basil: Modelling
+- [Shrki](https://discord.com/users/359214583485038602): Animation
+- Basil, [Rodrigo](https://discord.com/users/464855528968028181): Modelling
 - [Handoko Bintoro](https://www.fiverr.com/handoko_bintoro): Rigging and animation
+- [TheRenaeGade](https://youtube.com/@therenaegade?si=Rz5MAgdpMhJDjSTp): Music

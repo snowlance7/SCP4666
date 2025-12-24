@@ -1,0 +1,13 @@
+ManifestFileVersion: 0
+CRC: 2199338174
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: scp4666_assets
+      Dependencies: {}
+    Info_1:
+      Name: scp4666_networkhandler
+      Dependencies: {}
+    Info_2:
+      Name: scp4666_mainassets.duskmod
+      Dependencies: {}

@@ -16,7 +16,7 @@ using static SCP4666.Utils;
 
 namespace SCP4666
 {
-    public partial class SCP4666AI : EnemyAI // TODO: Rework and add new stuff
+    public partial class SCP4666AI : EnemyAI
     {
         // DEBUG STUFF
 
@@ -106,8 +106,8 @@ namespace SCP4666
 
         public bool isInsideFactory => !isOutside;
 
+        // TODO make all of these change based on number of targetplayers
         #region Constants
-        // Constants
         readonly Vector3 insideScale = new Vector3(1.5f, 1.5f, 1.5f);
         readonly Vector3 outsideScale = new Vector3(2f, 2f, 2f);
         const float attackRange = 5f;
@@ -127,7 +127,8 @@ namespace SCP4666
         const int maxDollsToDrop = 3;
         const int minDollsToSpawn = 2;
         const int maxDollsToSpawn = 5;
-        const float dollSpawningCooldown = 60f;
+        const float dollCountMultiplier = 0.2f;
+        const float dollSpawningCooldown = 30f;
 
         const float groundSlamCooldown = 15f;
         const int maxDamageTakenToGroundSlam = 3;
@@ -140,11 +141,18 @@ namespace SCP4666
         const float spawnTurnCompassSpeed = 20f;
         const float LOSOffset = 2f;
         const float grabPlayerCooldown = 10f;
-        const bool playBossMusic = false;
 
         const float damagePlayerCooldown = 2f;
 
         const int playerKidnapChanceOffset = 100;
+
+        bool playBossMusic;
+        float bossMusicVolume;
+        bool canTeleport;
+        bool canSpawnDolls;
+        bool canThrowKnife;
+        bool canKidnap;
+        bool canGroundSlam;
         #endregion
 
         public enum State
@@ -164,9 +172,19 @@ namespace SCP4666
         public override void Start()
         {
             base.Start();
-            logger.LogDebug("SCP-4666 Spawned");
-
             Instances.Add(this);
+
+            var config = SCP4666ContentHandler.Instance.SCP4666;
+            if (config != null)
+            {
+                playBossMusic = config.GetConfig<bool>("Play Boss Music").Value;
+                bossMusicVolume = config.GetConfig<float>("Boss Music Volume").Value;
+                canTeleport = config.GetConfig<bool>("Can Teleport").Value;
+                canSpawnDolls = config.GetConfig<bool>("Can Spawn Dolls").Value;
+                canThrowKnife = config.GetConfig<bool>("Can Throw Knife").Value;
+                canKidnap = config.GetConfig<bool>("Can Kidnap").Value;
+                canGroundSlam = config.GetConfig<bool>("Can Ground Slam").Value;
+            }
 
             enemyHP = maxHp;
             currentBehaviourStateIndex = (int)State.Spawning;
@@ -191,6 +209,8 @@ namespace SCP4666
             // spawn presents
             int num = UnityEngine.Random.Range(minPresentsToSpawn, maxPresentsToSpawn);
             SpawnPresents(num);
+
+            logger.LogDebug("SCP-4666 Spawned");
         }
 
         public override void OnDestroy()
@@ -212,6 +232,7 @@ namespace SCP4666
 
             Destroy(thrownKnifeScript?.gameObject);
 
+            MusicSource.Stop();
             Instances.Remove(this);
             base.OnDestroy();
         }
@@ -289,13 +310,13 @@ namespace SCP4666
             if (targetPlayers.Contains(localPlayer) && playBossMusic)
             {
                 if (!MusicSource.isPlaying)
+                {
+                    MusicSource.volume = bossMusicVolume;
                     MusicSource.Play();
+                }
             }
-            else
-            {
-                if (MusicSource.isPlaying)
-                    MusicSource.Stop();
-            }
+            else if (MusicSource.isPlaying)
+                MusicSource.Stop();
         }
 
         public void LateUpdate()
@@ -346,7 +367,7 @@ namespace SCP4666
                     }
                     // TODO: Set up configs for disabling certain attacks/mechanics
                     // Teleport on cooldown
-                    if (CanDoSpecialAction() && timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance
+                    if (canTeleport && CanDoSpecialAction() && timeSinceTeleport > teleportCooldown && Vector3.Distance(targetPlayer.transform.position, transform.position) > teleportDistance
                         && (!Utils.isBeta || DEBUG_allowTeleporting))
                     {
                         GameObject? teleportNode = GetClosestNodeBehindPlayer(targetPlayer, 1f);
@@ -358,19 +379,19 @@ namespace SCP4666
                     }
 
                     // Spawn dolls on cooldown
-                    if (CanDoSpecialAction() && timeSinceDollSpawning > dollSpawningCooldown
+                    if (canSpawnDolls && CanDoSpecialAction() && timeSinceDollSpawning > dollSpawningCooldown
                         && (!Utils.isBeta || DEBUG_allowSpawnDolls))
                     {
                         logger.LogDebug("Spawning dolls");
                         timeSinceDollSpawning = 0f;
-                        dollsToSpawn = UnityEngine.Random.Range(minDollsToSpawn, maxDollsToSpawn + 1);
+                        dollsToSpawn = (int)((UnityEngine.Random.Range(minDollsToSpawn, maxDollsToSpawn + 1)) * ((targetPlayers.Count * dollCountMultiplier) + 1));
                         inSpecialAnimation = true;
                         DoAnimationClientRpc("spawnDoll");
                         return;
                     }
 
                     // Call knife back on cooldown if it is thrown
-                    if (isThrowingKnife && !isCallingKnife && timeSinceKnifeThrown > knifeReturnCooldown) // TODO: Test this
+                    if (isThrowingKnife && !isCallingKnife && timeSinceKnifeThrown > knifeReturnCooldown)
                     {
                         logger.LogDebug("KnifeThrown: " + isThrowingKnife);
                         isCallingKnife = true;
@@ -379,7 +400,7 @@ namespace SCP4666
                     }
 
                     // Throw knife on cooldown
-                    if (CanDoSpecialAction() && timeSinceKnifeThrown > knifeThrowCooldown
+                    if (canThrowKnife && CanDoSpecialAction() && timeSinceKnifeThrown > knifeThrowCooldown
                         && (!Utils.isBeta || DEBUG_allowThrowKnife))
                     {
                         //logger.LogDebug("Begin throwing knife");
@@ -487,7 +508,7 @@ namespace SCP4666
             && !isCallingKnife
             && !inSpecialAnimation
             && !teleporting
-            && !isGrabbingPlayer; // TODO: Test isGrabbingPlayer make sure it doesnt break anything
+            && !isGrabbingPlayer;
         }
 
         public void Teleport(Vector3 position, bool outside)
@@ -670,7 +691,7 @@ namespace SCP4666
                 useBombDolls = true;
             }
 
-            if (damageTakenWithoutDamaging >= maxDamageTakenToGroundSlam && timeSinceGroundSlam > groundSlamCooldown
+            if (canGroundSlam && damageTakenWithoutDamaging >= maxDamageTakenToGroundSlam && timeSinceGroundSlam > groundSlamCooldown
                 && (!Utils.isBeta || DEBUG_allowGroundSlam))
             {
                 logger.LogDebug("Performing ground slam");
@@ -693,7 +714,7 @@ namespace SCP4666
 
             timeSinceDamagePlayer = 0f;
 
-            if (CanKidnapPlayer(player) && (!Utils.isBeta || DEBUG_allowAbducting))
+            if (canKidnap && CanKidnapPlayer(player) && (!Utils.isBeta || DEBUG_allowAbducting))
             {
                 timeSinceGrabPlayer = 0f;
                 inSpecialAnimation = true;
@@ -757,7 +778,7 @@ namespace SCP4666
             DollInstances.Remove(doll);
         }
 
-        public new void SetEnemyOutside(bool outside) // Call in SmartNavAgent in unity editor TODO
+        public new void SetEnemyOutside(bool outside) // Call in SmartNavAgent in unity editor
         {
             transform.localScale = outside ? outsideScale : insideScale;
         }

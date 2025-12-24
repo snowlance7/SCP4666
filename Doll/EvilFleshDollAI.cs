@@ -1,22 +1,16 @@
-﻿using BepInEx.Logging;
-using Dawn.Utils;
-using GameNetcodeStuff;
-using System;
+﻿using GameNetcodeStuff;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Events;
-using UnityEngine.TextCore.Text;
-using static ES3Spreadsheet;
 using static SCP4666.Plugin;
 
 namespace SCP4666.Doll
 {
-    public class EvilFleshDollAI : NetworkBehaviour // TODO: Need to test and fix // TODO: Test networking
+    public class EvilFleshDollAI : NetworkBehaviour
     {
         public static int DEBUG_bodyPartIndex = 0;
 
@@ -100,7 +94,7 @@ namespace SCP4666.Doll
         public const float distanceToJumpAtPlayer = 4f;
         const float jumpHeight = 2f;
         const float jumpDuration = 0.5f;
-        const bool dollsTargetClosestPlayer = false;
+        const bool dollsTargetClosestPlayer = true;
 
         public override void OnDestroy()
         {
@@ -353,7 +347,6 @@ namespace SCP4666.Doll
 
         public void OnCollideWithPlayer(PlayerControllerB player)
         {
-            //return; // TODO: For testing, remove later
             if (!IsServer) { return; }
             if (parentObject != null || isEnemyDead || inSpecialAnimation) { return; }
             if (player.isHostPlayerObject && Utils.DEBUG_disableHostTargetting && Utils.isBeta) { return; }
@@ -394,7 +387,7 @@ namespace SCP4666.Doll
             targetPlayer?.DamagePlayer(biteDamage, false);
             damagingPlayer = false;
             logger.LogDebug("Player bitten by doll");
-        } // TODO: Test this on network
+        }
 
         internal void HitEnemyOnLocalClient()
         {
@@ -403,7 +396,7 @@ namespace SCP4666.Doll
             HitEnemyServerRpc();
         }
 
-        public void LocalPlayerDamaged() // TODO: Test this
+        public void LocalPlayerDamaged()
         {
             logger.LogDebug("Local player damaged");
             if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer || damagingPlayer) { return; }
@@ -447,7 +440,7 @@ namespace SCP4666.Doll
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void HitEnemyServerRpc() // TODO: test
+        public void HitEnemyServerRpc()
         {
             if (!IsServer) { return; }
 

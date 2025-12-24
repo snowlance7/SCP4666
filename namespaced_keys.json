@@ -5,8 +5,8 @@
   },
   "ScpfoursixsixsixItemKeys": {
     "__type": "DawnItemInfo",
-    "ChildSack": "scpfoursixsixsix:child_sack",
     "FleshDoll": "scpfoursixsixsix:fleshdoll",
-    "YulemanKnife": "scpfoursixsixsix:yuleman_knife"
+    "YulemanKnife": "scpfoursixsixsix:yuleman_knife",
+    "ChildSack": "scpfoursixsixsix:child_sack"
   }
 }

@@ -33,7 +33,7 @@ namespace SCP4666
                 logger.LogDebug("Sack found, attempting to stop ship leave and revive players");
                 StartOfRound.Instance.allPlayersDead = false;
 
-                if (!IsServerOrHost) { return false; } // TODO: Test this
+                if (!IsServerOrHost) { return false; }
 
                 sack.Activate();
 

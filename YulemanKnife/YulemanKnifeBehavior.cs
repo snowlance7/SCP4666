@@ -184,7 +184,7 @@ namespace SCP4666.YulemanKnife
             positionOffset = PositionOffsetStab;
         }
 
-        public void HitKnife(bool cancel = false) // TODO: Need to fix this up?
+        public void HitKnife(bool cancel = false)
         {
             if (!IsOwner) { return; }
             if (previousPlayerHeldBy == null)
@@ -299,7 +299,7 @@ namespace SCP4666.YulemanKnife
             thrownKnifeScript?.CallKnife();
         }
 
-        public void MakeKnifeVisible(bool value) // TODO: Knife switching to rune is desynced for other clients
+        public void MakeKnifeVisible(bool value)
         {
             KnifeMesh.SetActive(value);
             RuneMesh.SetActive(!value);

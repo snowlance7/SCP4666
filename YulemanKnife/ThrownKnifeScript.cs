@@ -104,9 +104,9 @@ namespace SCP4666.YulemanKnife
         {
             enabled = true;
             knifeThrownBy = _knifeThrownBy;
-            transform.position = knifeThrownBy.position + transform.forward; // TODO: Test this
+            transform.position = knifeThrownBy.position + transform.forward;
             transform.rotation = Quaternion.LookRotation(throwDirection, KnifeTip.up);
-            postThrowPosition = GetKnifeEndPoint(); // TODO: Test this
+            postThrowPosition = GetKnifeEndPoint();
             isThrown = true;
         }
 
