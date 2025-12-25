@@ -66,6 +66,7 @@ DNA testing revealed the subject had been Ekaterina Morozova, age 7, a known abd
 ## Upcoming Changes
 - DawnLib Achievements?
 - More attacks/behavior?
+- Set up more configs
 
 ## About Project SCP
 

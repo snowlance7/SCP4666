@@ -32,7 +32,7 @@ namespace SCP4666.Doll
 
         public bool isBombDoll;
 
-        PlayerControllerB? targetPlayer;
+        public PlayerControllerB? targetPlayer;
 
         const float AIIntervalTime = 0.2f;
         float timeSinceIntervalUpdate;
@@ -46,7 +46,7 @@ namespace SCP4666.Doll
 
         bool landing;
         bool falling;
-        bool jumping;
+        //bool jumping;
 
         bool inSpecialAnimation;
 
@@ -54,7 +54,8 @@ namespace SCP4666.Doll
 
         const float bombTimeToExplode = 15f;
 
-        bool damagingPlayer;
+        public bool damagingPlayer;
+        public static UnityEvent onThisDamagingLocalPlayer = new UnityEvent();
 
         //bool clingingToPlayer;
         int bodyPartIndex;
@@ -105,12 +106,13 @@ namespace SCP4666.Doll
 
         public void Start()
         {
-            StartOfRound.Instance.LocalPlayerDamagedEvent.AddListener(LocalPlayerDamaged);
+            //StartOfRound.Instance.LocalPlayerDamagedEvent.AddListener(OnLocalPlayerDamaged);
+            //onThisDamagingLocalPlayer.AddListener(OnThisDamagingLocalPlayer);
+            SCP4666AI.onPlayerGrabbed.AddListener(OnPlayerGrabbed);
+
             Instances.Add(this);
 
             inSpecialAnimation = true;
-
-            SCP4666AI.onPlayerGrabbed.AddListener(OnPlayerGrabbed);
 
             //falling = false;
             //landing = false;
@@ -120,11 +122,7 @@ namespace SCP4666.Doll
 
         public void Update()
         {
-            if (!IsServer || isEnemyDead || jumping) { return; }
-            if (inSpecialAnimation)
-            {
-                StopMovement();
-            }
+            if (!IsServer || isEnemyDead) { return; }
 
             if (parentObject != null)
             {
@@ -135,6 +133,12 @@ namespace SCP4666.Doll
                     DropDollClientRpc();
                 }
 
+                return;
+            }
+
+            if (inSpecialAnimation)
+            {
+                StopMovement();
                 return;
             }
 
@@ -274,9 +278,6 @@ namespace SCP4666.Doll
 
         public void Lunge(float distance, float jumpHeight, float duration)
         {
-            if (jumping) { return; }
-            jumping = true;
-
             IEnumerator LungeRoutine(float distance, float jumpHeight, float duration)
             {
                 targetFloorPosition = transform.position + transform.forward * distance;
@@ -287,11 +288,6 @@ namespace SCP4666.Doll
                 float elapsed = 0f;
                 while (elapsed < duration)
                 {
-                    if (!jumping)
-                    {
-                        yield break;
-                    }
-
                     elapsed += Time.deltaTime;
                     float t = elapsed / duration;
 
@@ -325,7 +321,6 @@ namespace SCP4666.Doll
                     yield return null;
                 }
 
-                jumping = false;
                 OnHitGround();
             }
 
@@ -348,8 +343,8 @@ namespace SCP4666.Doll
         public void OnCollideWithPlayer(PlayerControllerB player)
         {
             if (!IsServer) { return; }
-            if (parentObject != null || isEnemyDead || inSpecialAnimation) { return; }
-            if (player.isHostPlayerObject && Utils.DEBUG_disableHostTargetting && Utils.isBeta) { return; }
+            if (parentObject != null || isEnemyDead/* || inSpecialAnimation*/) { return; }
+            if (Utils.isBeta && player.isHostPlayerObject && Utils.DEBUG_disableHostTargetting) { return; }
 
             targetPlayer = player;
             StopMovement();
@@ -370,22 +365,22 @@ namespace SCP4666.Doll
 
             if (targetPlayer == null)
             {
+                logger.LogError("No target player");
                 animator.SetTrigger("reset");
                 inSpecialAnimation = false;
                 targetPlayer = null;
                 return;
             }
 
-            inSpecialAnimation = false;
+            //inSpecialAnimation = false;
             Lunge(distanceToJumpAtPlayer * 2, jumpHeight, jumpDuration);
         }
 
         public void BitePlayer() // Animation: Gets called when doll biting player animation finishes a cycle
         {
             if (targetPlayer == null) { return; }
-            damagingPlayer = true;
+            onThisDamagingLocalPlayer.Invoke();
             targetPlayer?.DamagePlayer(biteDamage, false);
-            damagingPlayer = false;
             logger.LogDebug("Player bitten by doll");
         }
 
@@ -396,12 +391,18 @@ namespace SCP4666.Doll
             HitEnemyServerRpc();
         }
 
-        public void LocalPlayerDamaged()
+        /*public void OnThisDamagingLocalPlayer() // Listener
+        {
+            if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer) { return; }
+            damagingPlayer = true;
+        }
+
+        public void OnLocalPlayerDamaged() // Listener
         {
             logger.LogDebug("Local player damaged");
-            if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer || damagingPlayer) { return; }
+            if (parentObject == null || targetPlayer == null || targetPlayer != localPlayer || damagingPlayer ) { damagingPlayer = false; return; }
             HitEnemyOnLocalClient();
-        }
+        }*/
 
         public void OnPlayerGrabbed(PlayerControllerB player) // Listener
         {
@@ -426,7 +427,6 @@ namespace SCP4666.Doll
 
         public void ResetVariables()
         {
-            jumping = false;
             landing = false;
             falling = false;
             inSpecialAnimation = false;

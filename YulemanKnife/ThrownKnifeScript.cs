@@ -1,5 +1,6 @@
 ﻿using BepInEx.Logging;
 using GameNetcodeStuff;
+using SCP4666.Doll;
 using System.Collections.Generic;
 using UnityEngine;
 using static SCP4666.Plugin;
@@ -177,6 +178,7 @@ namespace SCP4666.YulemanKnife
 
                 if (localPlayer == player)
                 {
+                    EvilFleshDollAI.onThisDamagingLocalPlayer.Invoke();
                     localPlayer.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer);
                 }
             }

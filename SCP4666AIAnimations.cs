@@ -66,6 +66,7 @@ namespace SCP4666
                     {
                         yield return new WaitUntil(() => localPlayer.thisController.isGrounded || localPlayer.isInHangarShipRoom);
                         if (localPlayer.isPlayerDead) { yield break; }
+                        EvilFleshDollAI.onThisDamagingLocalPlayer.Invoke();
                         localPlayer.DamagePlayer(groundSlamDamage);
                         localPlayer.sprintMeter /= 2;
                         localPlayer.JumpToFearLevel(0.7f);
@@ -92,6 +93,7 @@ namespace SCP4666
             {
                 logger.LogDebug("Damaging " + player.playerUsername);
                 int deathAnim = UnityEngine.Random.Range(0, 2) == 1 ? 7 : 0;
+                EvilFleshDollAI.onThisDamagingLocalPlayer.Invoke();
                 player.DamagePlayer(YulemanKnifeBehavior.knifeHitForcePlayer, true, true, CauseOfDeath.Stabbing, deathAnim);
             }
         }
@@ -111,6 +113,7 @@ namespace SCP4666
             if (angleToPlayer <= attackAngle)
             {
                 logger.LogDebug("Damaging " + player.playerUsername);
+                EvilFleshDollAI.onThisDamagingLocalPlayer.Invoke();
                 player.DamagePlayer(slapDamage, true, true, CauseOfDeath.Mauling, 0, false, transform.position + transform.forward * 5);
             }
         }

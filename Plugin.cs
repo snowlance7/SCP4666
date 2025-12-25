@@ -1,21 +1,13 @@
 using BepInEx;
-using BepInEx.Configuration;
 using BepInEx.Logging;
 using Dawn;
-using Dawn.Utils;
-using Dusk;
 using GameNetcodeStuff;
 using HarmonyLib;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.AI;
-using UnityEngine.Animations.Rigging;
 
 namespace SCP4666
 {
@@ -27,7 +19,7 @@ namespace SCP4666
 #pragma warning disable CS8618
         public static Plugin Instance;
         public static ManualLogSource logger;
-        //public static DuskMod Mod { get; private set; }
+        //public static DuskMod Mod { get; private set; } // TODO: Figure this out
 #pragma warning restore CS8618
 
         private readonly Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
@@ -48,7 +40,8 @@ namespace SCP4666
 
             InitializeNetworkBehaviours();
 
-            /*AssetBundle mainBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_mainassets"));
+            //AssetBundle mainBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Info.Location), "scp4666_mainassets"));
+            /*AssetBundle mainBundle = AssetBundleUtils.LoadBundle(Assembly.GetExecutingAssembly(), "scp4666_mainassets");
             Mod = DuskMod.RegisterMod(this, mainBundle);
             Mod.RegisterContentHandlers();*/
 

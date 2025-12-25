@@ -146,13 +146,13 @@ namespace SCP4666
 
         const int playerKidnapChanceOffset = 100;
 
-        bool playBossMusic;
-        float bossMusicVolume;
-        bool canTeleport;
-        bool canSpawnDolls;
-        bool canThrowKnife;
-        bool canKidnap;
-        bool canGroundSlam;
+        bool playBossMusic = true;
+        float bossMusicVolume = 0.3F;
+        bool canTeleport = true;
+        bool canSpawnDolls = true;
+        bool canThrowKnife = true;
+        bool canKidnap = true;
+        bool canGroundSlam = true;
         #endregion
 
         public enum State
@@ -174,17 +174,7 @@ namespace SCP4666
             base.Start();
             Instances.Add(this);
 
-            var config = SCP4666ContentHandler.Instance.SCP4666;
-            if (config != null)
-            {
-                playBossMusic = config.GetConfig<bool>("Play Boss Music").Value;
-                bossMusicVolume = config.GetConfig<float>("Boss Music Volume").Value;
-                canTeleport = config.GetConfig<bool>("Can Teleport").Value;
-                canSpawnDolls = config.GetConfig<bool>("Can Spawn Dolls").Value;
-                canThrowKnife = config.GetConfig<bool>("Can Throw Knife").Value;
-                canKidnap = config.GetConfig<bool>("Can Kidnap").Value;
-                canGroundSlam = config.GetConfig<bool>("Can Ground Slam").Value;
-            }
+            //SetConfigs();
 
             enemyHP = maxHp;
             currentBehaviourStateIndex = (int)State.Spawning;
@@ -211,6 +201,29 @@ namespace SCP4666
             SpawnPresents(num);
 
             logger.LogDebug("SCP-4666 Spawned");
+        }
+
+        void SetConfigs()
+        {
+            try
+            {
+                var config = SCP4666ContentHandler.Instance.SCP4666;
+                if (config != null)
+                {
+                    playBossMusic = config.GetConfig<bool>("Play Boss Music").Value;
+                    bossMusicVolume = config.GetConfig<float>("Boss Music Volume").Value;
+                    canTeleport = config.GetConfig<bool>("Can Teleport").Value;
+                    canSpawnDolls = config.GetConfig<bool>("Can Spawn Dolls").Value;
+                    canThrowKnife = config.GetConfig<bool>("Can Throw Knife").Value;
+                    canKidnap = config.GetConfig<bool>("Can Kidnap").Value;
+                    canGroundSlam = config.GetConfig<bool>("Can Ground Slam").Value;
+                }
+            }
+            catch
+            {
+                logger.LogError("Couldnt load configs");
+                return;
+            }
         }
 
         public override void OnDestroy()
@@ -342,6 +355,11 @@ namespace SCP4666
 
         public override void DoAIInterval()
         {
+            if (moveTowardsDestination)
+            {
+                agent.SetDestination(destination);
+            }
+
             UpdateTestingHUD();
 
             switch (currentBehaviourStateIndex)

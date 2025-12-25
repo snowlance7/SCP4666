@@ -2,7 +2,6 @@
 using Dawn.Utils;
 using GameNetcodeStuff;
 using HarmonyLib;
-using PathfindingLib.API.SmartPathfinding;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
