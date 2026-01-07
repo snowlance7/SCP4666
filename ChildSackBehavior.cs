@@ -7,7 +7,7 @@ using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using static SCP4666.Plugin;
-
+// TODO: make a config for disabling the player shrinking mechanic
 namespace SCP4666
 {
     public class ChildSackBehavior : PhysicsProp
@@ -16,11 +16,12 @@ namespace SCP4666
 
         public static bool localPlayerSizeChangedFromSack;
 
-        // Configs
+        // Configs // TODO: Set up these configs in unity
         const float minSize = 0.6f;
         const float maxSize = 0.8f;
         const bool allowManualActivation = true;
         public const bool activateOnTeamWipe = true;
+        const bool shrinkPlayerOnRevive = false;
 
         public override void Start()
         {
@@ -41,7 +42,7 @@ namespace SCP4666
             if (!buttonDown || !allowManualActivation) { return; }
 
             playerHeldBy.DiscardHeldObject();
-            Activate();
+            ActivateServerRpc();
         }
 
         public void Activate(float delay = 0f)
@@ -224,7 +225,8 @@ namespace SCP4666
 
             deadBodyInfo.DeactivateBody(false);
 
-            PlayerScript.thisPlayerBody.localScale = new Vector3(playerSize, playerSize, playerSize);
+            if (!shrinkPlayerOnRevive) { return; }
+            PlayerScript.thisPlayerBody.localScale = new Vector3(playerSize, playerSize, playerSize); // TODO: Look at how lega shrinks players in cursed scrap
             Utils.RebuildRig(PlayerScript);
         }
     }

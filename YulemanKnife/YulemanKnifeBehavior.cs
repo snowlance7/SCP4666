@@ -1,5 +1,4 @@
-﻿using BepInEx.Logging;
-using GameNetcodeStuff;
+﻿using GameNetcodeStuff;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,7 +6,6 @@ using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using static SCP4666.Plugin;
-using static UnityEngine.Rendering.DebugUI;
 
 namespace SCP4666.YulemanKnife
 {
@@ -166,7 +164,7 @@ namespace SCP4666.YulemanKnife
             positionOffset = PositionOffsetThrow;
             KnifeAudio.PlayOneShot(KnifeChargeSFX, 1f);
             WalkieTalkie.TransmitOneShotAudio(KnifeAudio, KnifeChargeSFX, 1f);
-            RoundManager.Instance.PlayAudibleNoise(playerHeldBy.transform.position, KnifeAudio.maxDistance, 0.5f, 0, playerHeldBy.isInHangarShipRoom);
+            RoundManager.Instance.PlayAudibleNoise(previousPlayerHeldBy.transform.position, KnifeAudio.maxDistance, 0.5f, 0, previousPlayerHeldBy.isInHangarShipRoom);
             isCharged = true;
             logger.LogDebug("Knife is charged");
         }

@@ -74,6 +74,7 @@
 
     <ItemGroup>
       <Folder Include="Assets\" />
+      <Folder Include="ThunderStore\plugins\Assets\" />
     </ItemGroup>
 
     <ItemGroup>
